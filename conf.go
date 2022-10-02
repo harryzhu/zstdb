@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"database/sql"
+	"sort"
 	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -113,8 +114,15 @@ func (c *Conf) Delete(k string) *Conf {
 
 func (c *Conf) Print() {
 	log.Println("===== Print All Items =====")
-	for k, v := range c.Item {
-		log.Println(k, "=", v)
+	var cItemKeys []string
+	for k, _ := range c.Item {
+		cItemKeys = append(cItemKeys, k)
+	}
+
+	sort.Strings(cItemKeys)
+
+	for _, k := range cItemKeys {
+		log.Println(k, "=", c.Item[k])
 	}
 	log.Println("===== END =====")
 }
