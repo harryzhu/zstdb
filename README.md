@@ -1,11 +1,12 @@
 # sqlconf
 
 ## Usage
-** in go.mod
+### in go.mod
 <code>
     replace sqlconf => ../sqlconf
 </code>
-**  in go file
+
+### in go file
 <code>
     import "sqlconf"
 
