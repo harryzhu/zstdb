@@ -1,9 +1,9 @@
 package sqlconf
 
 import (
-	"log"
-
 	"database/sql"
+	"fmt"
+	"log"
 	"sort"
 	"strconv"
 
@@ -113,7 +113,7 @@ func (c *Conf) Delete(k string) *Conf {
 }
 
 func (c *Conf) Print() {
-	log.Println("===== Print All Items =====")
+	log.Println("===== Print All Config Items =====\n")
 	var cItemKeys []string
 	for k, _ := range c.Item {
 		cItemKeys = append(cItemKeys, k)
@@ -122,8 +122,9 @@ func (c *Conf) Print() {
 	sort.Strings(cItemKeys)
 
 	for _, k := range cItemKeys {
-		log.Println(k, "=", c.Item[k])
+		fmt.Println(k, "=", c.Item[k])
 	}
+	fmt.Println("")
 	log.Println("===== END =====")
 }
 
