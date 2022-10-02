@@ -92,7 +92,7 @@ func (c *Conf) Delete(k string) *Conf {
 	err := c.db.QueryRow(q, k).Scan(&id, &name, &val)
 
 	if err != nil {
-		return c
+		log.Fatal(err)
 	} else {
 		q = "delete from settings where name=?"
 	}
