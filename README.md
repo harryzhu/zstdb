@@ -7,8 +7,7 @@
 </code>
 
 ### in go file
-<code>
-
+```
     import "sqlconf"
 
     var config *sqlconf.Conf = new(sqlconf.Conf)
@@ -17,5 +16,5 @@
 
     config.Set("KEY", "VALUE")
     
-</code>
+```
 
