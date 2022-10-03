@@ -59,6 +59,10 @@ func (c *Conf) Open(f string) *Conf {
 	return c
 }
 
+func (c *Conf) Close() {
+	c.db.Close()
+}
+
 func (c *Conf) Set(k, v string) *Conf {
 	var id, name, val string
 	q := "select * from settings where name=?"
