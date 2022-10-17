@@ -17,6 +17,7 @@ type Conf struct {
 	db     *sql.DB
 	Item   map[string]string
 	Logger *zap.Logger
+	Mail   *Mail
 	Bar    *progressbar.ProgressBar
 }
 
@@ -140,6 +141,15 @@ func (c *Conf) SetLogger(log_dir, app_name string) *Conf {
 
 func (c *Conf) SetBar(max int64, title string) *Conf {
 	c.Bar = initProgressBar(max, title)
+	return c
+}
+
+func (c *Conf) SetMail() *Conf {
+	var m *Mail = &Mail{}
+	m.WithSMTPEnv("BACKUPPERSMTPHOST", "BACKUPPERSMTPPORT", "BACKUPPERSMTPUSERNAME", "BACKUPPERSMTPPASSWORD")
+	m.WithMailEnv("BACKUPPERSMTPFROM", "BACKUPPERSMTPTO", "BACKUPPERSMTPCC", "BACKUPPERSMTPBCC")
+
+	c.Mail = m
 	return c
 }
 
