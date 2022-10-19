@@ -2,6 +2,7 @@ package sqlconf
 
 import (
 	//"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,43 +15,35 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var (
-	logger *zap.Logger
-)
+type Logger struct {
+	ZapLogger           *zap.Logger
+	ErrorLogFile        string
+	InfoLogFile         string
+	CurrentErrorLogFile string
+}
 
-var (
-	ErrorLog        string
-	InfoLog         string
-	CurrentErrorLog string
-)
-
-func initLogger(app_logs_dir string, app_name string) {
+func (l *Logger) initLogger(app_logs_dir string, app_name string) *Logger {
 	dt := time.Now().Format("20060102")
 
-	_, err := os.Stat(app_logs_dir)
-	if err != nil {
-		err := os.MkdirAll(app_logs_dir, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			os.Chmod(app_logs_dir, os.ModePerm)
-		}
-	}
+	MakeDirs(app_logs_dir)
 
 	infoPath := filepath.Join(app_logs_dir, strings.ToLower(strings.Join([]string{app_name, dt, "info.log"}, "_")))
 	errPath := filepath.Join(app_logs_dir, strings.ToLower(strings.Join([]string{app_name, dt, "error.log"}, "_")))
-	curPath := filepath.Join(app_logs_dir, strings.ToLower(strings.Join([]string{app_name, dt, "current_error.log"}, "_")))
+	curPath := filepath.Join(app_logs_dir, strings.ToLower(strings.Join([]string{app_name, "current_error.log"}, "_")))
 
-	logger, err = getLogger(infoPath, errPath, curPath)
+	logger, err := getLogger(infoPath, errPath, curPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ErrorLog = errPath
-	InfoLog = infoPath
-	CurrentErrorLog = curPath
+	l.ZapLogger = logger
+	l.ErrorLogFile = errPath
+	l.InfoLogFile = infoPath
+	l.CurrentErrorLogFile = curPath
 
 	defer logger.Sync()
+
+	return l
 }
 
 func getLogger(infoPath, errorPath, curPath string) (*zap.Logger, error) {
@@ -111,4 +104,27 @@ func getLogger(infoPath, errorPath, curPath string) (*zap.Logger, error) {
 	consoleCore := zapcore.NewCore(consoleEncoder, consoleDebugging, lowPriority)
 
 	return zap.New(zapcore.NewTee(highCore, lowCore, curCore, consoleCore), zap.AddCaller()), nil
+}
+
+func (l *Logger) MailReportCurrentError() error {
+	if l.CurrentErrorLogFile == "" {
+		return nil
+	}
+
+	if fi, err := os.Stat(l.CurrentErrorLogFile); err == nil {
+		if fi.Size() > 16 {
+			cnt, err := ioutil.ReadFile(l.CurrentErrorLogFile)
+			if err == nil {
+				var m *Conf = &Conf{}
+
+				mSubject := "[ERROR].[RUNNING]:" + filepath.Base(l.CurrentErrorLogFile)
+				mBody := strings.Join([]string{l.CurrentErrorLogFile, "<br/><br/>", "<pre>", string(cnt), "</pre>"}, "")
+
+				m.SetMail().Mail.WithMessage(mSubject, mBody).SendMailStartTLS()
+			}
+
+		}
+	}
+
+	return nil
 }

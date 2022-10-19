@@ -5,20 +5,58 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strconv"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/schollz/progressbar/v3"
-	"go.uber.org/zap"
+	//"go.uber.org/zap"
 )
 
 type Conf struct {
 	db     *sql.DB
 	Item   map[string]string
-	Logger *zap.Logger
+	Logger *Logger
 	Mail   *Mail
 	Bar    *progressbar.ProgressBar
+}
+
+var Config *Conf
+
+var (
+	ts_now        int64             = time.Now().Unix()
+	defaultConfig map[string]string = make(map[string]string, 10)
+)
+
+func init() {
+	Config = &Conf{}
+
+	defaultConfig["app_first_run"] = strconv.FormatInt(ts_now, 10)
+	defaultConfig["app_conf_update"] = strconv.FormatInt(ts_now, 10)
+	defaultConfig["app_name"] = "sqlconf"
+	defaultConfig["app_author"] = "harryzhu"
+	defaultConfig["app_license"] = "MIT"
+	defaultConfig["app_version"] = "1.0.0"
+	defaultConfig["app_data_dir"] = "./data"
+	defaultConfig["app_logs_dir"] = "./logs"
+	defaultConfig["app_temp_dir"] = "./temp"
+
+	cFile := "./conf.db"
+	firstRun := false
+
+	_, err := os.Stat(cFile)
+	if err != nil {
+		firstRun = true
+	}
+	Config.Open(cFile)
+
+	if firstRun == true {
+		Config.LoadData(defaultConfig)
+	}
+	Config.Refresh()
+	Config.RequiredKeys([]string{"app_name", "app_logs_dir"})
 }
 
 func (c *Conf) Refresh() *Conf {
@@ -132,9 +170,20 @@ func (c *Conf) LoadData(m map[string]string) *Conf {
 	return c
 }
 
-func (c *Conf) SetLogger(log_dir, app_name string) *Conf {
-	initLogger(log_dir, app_name)
-	c.Logger = logger
+func (c *Conf) SetLogger() *Conf {
+	var l *Logger = &Logger{}
+	logs_dir := "./logs"
+	app_name := "sqlconf"
+
+	if c.ToString("app_logs_dir") != "" {
+		logs_dir = c.ToString("app_logs_dir")
+	}
+
+	if c.ToString("app_name") != "" {
+		app_name = c.ToString("app_name")
+	}
+
+	c.Logger = l.initLogger(logs_dir, app_name)
 
 	return c
 }
@@ -146,8 +195,8 @@ func (c *Conf) SetBar(max int64, title string) *Conf {
 
 func (c *Conf) SetMail() *Conf {
 	var m *Mail = &Mail{}
-	m.WithSMTPEnv("BACKUPPERSMTPHOST", "BACKUPPERSMTPPORT", "BACKUPPERSMTPUSERNAME", "BACKUPPERSMTPPASSWORD")
-	m.WithMailEnv("BACKUPPERSMTPFROM", "BACKUPPERSMTPTO", "BACKUPPERSMTPCC", "BACKUPPERSMTPBCC")
+	m.WithSMTPEnv("SQLCONFSMTPHOST", "SQLCONFSMTPPORT", "SQLCONFSMTPUSERNAME", "SQLCONFSMTPPASSWORD")
+	m.WithMailEnv("SQLCONFSMTPFROM", "SQLCONFSMTPTO", "SQLCONFSMTPCC", "SQLCONFSMTPBCC")
 
 	c.Mail = m
 	return c
@@ -205,10 +254,16 @@ func (c *Conf) ToError(s string) (err error) {
 	return errors.New(c.Item[s])
 }
 
-func (c *Conf) FatalEmpty(m []string) {
+func (c *Conf) RequiredKeys(m []string) {
 	for _, k := range m {
 		if c.Item[k] == "" {
 			log.Fatalf("%v cannot be empty, pls use ./confctl set --name=%v --val=...", k, k)
 		}
 	}
+}
+
+func (c *Conf) AlwaysPostRun() *Conf {
+	c.Logger.MailReportCurrentError()
+
+	return c
 }

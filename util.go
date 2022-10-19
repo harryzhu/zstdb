@@ -1,6 +1,8 @@
 package sqlconf
 
 import (
+	"log"
+	"os"
 	"strings"
 )
 
@@ -16,4 +18,17 @@ func StringToSlice(s string) (sl []string) {
 	}
 
 	return sl
+}
+
+func MakeDirs(s string) error {
+	_, err := os.Stat(s)
+	if err != nil {
+		err := os.MkdirAll(s, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			os.Chmod(s, os.ModePerm)
+		}
+	}
+	return nil
 }

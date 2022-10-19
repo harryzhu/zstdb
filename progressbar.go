@@ -15,5 +15,6 @@ func initProgressBar(max int64, title string) *progressbar.ProgressBar {
 		max,
 		title,
 	)
+
 	return bar
 }
