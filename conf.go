@@ -12,7 +12,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/schollz/progressbar/v3"
-	//"go.uber.org/zap"
+	"go.uber.org/zap"
 )
 
 type Conf struct {
@@ -28,10 +28,12 @@ var Config *Conf
 var (
 	ts_now        int64             = time.Now().Unix()
 	defaultConfig map[string]string = make(map[string]string, 10)
+	zapLogger     *zap.Logger
 )
 
 func init() {
 	Config = &Conf{}
+	Config.SetLogger()
 
 	defaultConfig["app_first_run"] = strconv.FormatInt(ts_now, 10)
 	defaultConfig["app_conf_update"] = strconv.FormatInt(ts_now, 10)
@@ -184,7 +186,7 @@ func (c *Conf) SetLogger() *Conf {
 	}
 
 	c.Logger = l.initLogger(logs_dir, app_name)
-
+	zapLogger = c.Logger.ZapLogger
 	return c
 }
 

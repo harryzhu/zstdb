@@ -1,9 +1,17 @@
 package sqlconf
 
 import (
-	"log"
+	"io/ioutil"
+	//"log"
+	"net/http"
+
+	//"time"
+
+	//"net/url"
 	"os"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 func StringToSlice(s string) (sl []string) {
@@ -25,10 +33,26 @@ func MakeDirs(s string) error {
 	if err != nil {
 		err := os.MkdirAll(s, os.ModePerm)
 		if err != nil {
-			log.Fatal(err)
+			zapLogger.Error("MakeDirs", zap.Error(err))
 		} else {
 			os.Chmod(s, os.ModePerm)
 		}
 	}
 	return nil
+}
+
+func GetURLContent(URL string) (cnt string, err error) {
+	resp, err := http.Get(URL)
+	if err != nil {
+		zapLogger.Error("GetURLContent", zap.Error(err))
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		zapLogger.Error("GetURLContent", zap.Error(err))
+		return "", err
+	}
+
+	return string(body), nil
 }
