@@ -51,6 +51,7 @@ func init() {
 	_, err := os.Stat(cFile)
 	if err != nil {
 		firstRun = true
+		zapLogger.Info("First Run")
 	}
 	Config.Open(cFile)
 
@@ -64,7 +65,7 @@ func init() {
 func (c *Conf) Refresh() *Conf {
 	rows, err := c.db.Query("select * from settings")
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("conf-fefresh", zap.Error(err))
 	}
 
 	var id, name, val string
@@ -83,7 +84,7 @@ func (c *Conf) Refresh() *Conf {
 func (c *Conf) Open(f string) *Conf {
 	db, err := sql.Open("sqlite3", f)
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("conf:open", zap.Error(err))
 	}
 
 	settingsTable := `
@@ -98,7 +99,7 @@ func (c *Conf) Open(f string) *Conf {
 	for _, t := range tables {
 		_, err = db.Exec(t)
 		if err != nil {
-			log.Fatal(err)
+			zapLogger.Fatal("db-exec", zap.Error(err))
 		}
 	}
 	c.db = db
@@ -122,12 +123,12 @@ func (c *Conf) Set(k, v string) *Conf {
 
 	stmt, err := c.db.Prepare(q)
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("set:db-prepare", zap.Error(err))
 	}
 
 	_, err = stmt.Exec(v, k)
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("set:stmt-exec", zap.Error(err))
 	}
 
 	return c
@@ -135,28 +136,28 @@ func (c *Conf) Set(k, v string) *Conf {
 
 func (c *Conf) Delete(k string) *Conf {
 	if len(k) == 0 || len(k) > 64 {
-		log.Fatal("--name length must be greater than 0 and less then 64")
+		zapLogger.Fatal("--name length must be greater than 0 and less then 64")
 	}
 	var id, name, val string
 	q := "select * from settings where name=?"
 	err := c.db.QueryRow(q, k).Scan(&id, &name, &val)
 
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("delete", zap.Error(err))
 	} else {
 		q = "delete from settings where name=?"
 	}
 
 	stmt, err := c.db.Prepare(q)
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("stmt-prepare", zap.Error(err))
 	}
 	_, err = stmt.Exec(k)
 
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("stmt-exec", zap.Error(err))
 	} else {
-		log.Println("key(" + k + ") was deleted")
+		zapLogger.Info("key was deleted", zap.String("key", k))
 	}
 
 	return c
@@ -217,7 +218,7 @@ func (c *Conf) Print() {
 		fmt.Println(k, "=", c.Item[k])
 	}
 	fmt.Println("")
-	log.Println("===== END =====")
+	log.Println("===== Config END =====")
 }
 
 func (c *Conf) ToString(s string) string {
@@ -231,7 +232,7 @@ func (c *Conf) ToString(s string) string {
 func (c *Conf) ToInt(s string) int {
 	res, err := strconv.Atoi(c.Item[s])
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("ToInt", zap.Error(err))
 	}
 	return res
 }
@@ -239,7 +240,7 @@ func (c *Conf) ToInt(s string) int {
 func (c *Conf) ToInt64(s string) int64 {
 	res, err := strconv.ParseInt(c.Item[s], 10, 64)
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("ToInt64", zap.Error(err))
 	}
 	return res
 }
@@ -247,7 +248,7 @@ func (c *Conf) ToInt64(s string) int64 {
 func (c *Conf) ToFloat64(s string) float64 {
 	res, err := strconv.ParseFloat(c.Item[s], 64)
 	if err != nil {
-		log.Fatal(err)
+		zapLogger.Fatal("ToFloat64", zap.Error(err))
 	}
 	return res
 }
@@ -259,7 +260,7 @@ func (c *Conf) ToError(s string) (err error) {
 func (c *Conf) RequiredKeys(m []string) {
 	for _, k := range m {
 		if c.Item[k] == "" {
-			log.Fatalf("%v cannot be empty, pls use ./confctl set --name=%v --val=...", k, k)
+			zapLogger.Fatal("cannot be empty, pls use ./confctl set --name= --val= ", zap.String("name", k))
 		}
 	}
 }

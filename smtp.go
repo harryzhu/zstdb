@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"log"
+	//"log"
 	"net/smtp"
-
 	"os"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 // MailSetup ...
@@ -62,7 +63,7 @@ func (a *LoginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 
 func (m *Mail) WithSMTPEnv(envHost, envPort, envUsername, envPassword string) *Mail {
 	if envHost == "" || envPort == "" {
-		log.Fatal("please set your env variables first. ie.: export " + envHost + "=smtp.office365.com")
+		zapLogger.Fatal("please set your env variables first. ie.: export " + envHost + "=smtp.office365.com")
 	}
 
 	m.Host = os.Getenv(envHost)
@@ -118,32 +119,32 @@ func (m *Mail) SendMail() error {
 
 	var err error
 	if m.Username == "" && m.Password == "" {
-		log.Println("smtp using Anonymous ...")
+		zapLogger.Info("smtp using Anonymous ...")
 		err = smtp.SendMail(hostPort, nil, m.From, m.To, []byte(m.Message))
 	} else {
-		log.Println("using PlainAuth ...")
+		zapLogger.Info("using PlainAuth ...")
 		auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
 		err = smtp.SendMail(hostPort, auth, m.From, m.To, []byte(m.Message))
 	}
 
 	if err != nil {
-		log.Println(err)
+		zapLogger.Info("SendMail", zap.Error(err))
 		return err
 	}
 
-	log.Println("send mail: OK")
+	zapLogger.Info("send mail: OK")
 	return nil
 }
 
 // SendMailStartTLS ...
 func (m *Mail) SendMailStartTLS() error {
-	log.Println("using STARTTLS ...")
+	zapLogger.Info("using STARTTLS ...")
 
 	hostPort := strings.Join([]string{m.Host, m.Port}, ":")
 
 	smtpClient, err := smtp.Dial(hostPort)
 	if err != nil {
-		log.Println(hostPort, err)
+		zapLogger.Error(hostPort, zap.Error(err))
 		return err
 	}
 	defer smtpClient.Close()
@@ -153,7 +154,7 @@ func (m *Mail) SendMailStartTLS() error {
 			InsecureSkipVerify: true,
 			ServerName:         m.Host}
 		if err := smtpClient.StartTLS(cfg); err != nil {
-			log.Println(err)
+			zapLogger.Error("smtpClient.StartTLS(cfg)", zap.Error(err))
 			return err
 		}
 	}
@@ -161,13 +162,13 @@ func (m *Mail) SendMailStartTLS() error {
 	a := NewLoginAuth(m.Username, m.Password)
 	if ok, _ := smtpClient.Extension("AUTH"); ok {
 		if err := smtpClient.Auth(a); err != nil {
-			log.Println(err)
+			zapLogger.Error("smtpClient.Auth(a)", zap.Error(err))
 			return err
 		}
 	}
 
 	if err := smtpClient.Mail(m.From); err != nil {
-		log.Println(err)
+		zapLogger.Error("smtpClient.Mail", zap.Error(err))
 		return err
 	}
 
@@ -176,31 +177,31 @@ func (m *Mail) SendMailStartTLS() error {
 			continue
 		}
 		if err := smtpClient.Rcpt(addr); err != nil {
-			log.Println(err)
+			zapLogger.Error("smtpClient.Rcpt", zap.Error(err))
 			return err
 		}
 	}
 
 	w, err := smtpClient.Data()
 	if err != nil {
-		log.Println(err)
+		zapLogger.Error("smtpClient.Data", zap.Error(err))
 		return err
 	}
 
 	_, err = w.Write([]byte(m.Message))
 	if err != nil {
-		log.Println(err)
+		zapLogger.Error("w.Write", zap.Error(err))
 		return err
 	}
 
 	err = w.Close()
 	if err != nil {
-		log.Println(err)
+		zapLogger.Error("w.Close", zap.Error(err))
 		return err
 	}
 
 	smtpClient.Quit()
 
-	log.Println("send mail: OK")
+	zapLogger.Info("send mail: OK")
 	return nil
 }
