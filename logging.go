@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	//"strings"
@@ -63,7 +64,10 @@ func getLogger(infoPath, errorPath, curPath string) (*zap.Logger, error) {
 
 	devEncoder := zap.NewDevelopmentEncoderConfig()
 	devEncoder.EncodeTime = zapcore.ISO8601TimeEncoder
-	devEncoder.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+	if strings.ToLower(runtime.GOOS) != "windows" {
+		devEncoder.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	}
 
 	consoleEncoder := zapcore.NewConsoleEncoder(devEncoder)
 
@@ -115,12 +119,11 @@ func (l *Logger) MailReportCurrentError() error {
 		if fi.Size() > 16 {
 			cnt, err := ioutil.ReadFile(l.CurrentErrorLogFile)
 			if err == nil {
-				var m *Conf = &Conf{}
 
 				mSubject := "[ERROR].[RUNNING]:" + filepath.Base(l.CurrentErrorLogFile)
 				mBody := strings.Join([]string{l.CurrentErrorLogFile, "<br/><br/>", "<pre>", string(cnt), "</pre>"}, "")
 
-				m.SetMail().Mail.WithMessage(mSubject, mBody).SendMailStartTLS()
+				Config.Mail.WithMessage(mSubject, mBody).SendMailStartTLS()
 			}
 
 		}

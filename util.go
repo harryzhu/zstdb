@@ -6,7 +6,7 @@ import (
 
 	//"log"
 	"net/http"
-
+	"regexp"
 	"time"
 
 	//"net/url"
@@ -60,7 +60,27 @@ func GetURLContent(URL string) (cnt string, err error) {
 	return string(body), nil
 }
 
-func DownloadFile(URL string, localPath string, isOverwrite bool) error {
+func Filepathify(fp string) string {
+	var replacement string = "_"
+
+	reControlCharsRegex := regexp.MustCompile("[\u0000-\u001f\u0080-\u009f]")
+
+	reRelativePathRegex := regexp.MustCompile(`^\.+`)
+
+	filenameReservedRegex := regexp.MustCompile(`[<>:"\\|?*\x00-\x1F]`)
+	filenameReservedWindowsNamesRegex := regexp.MustCompile(`(?i)^(con|prn|aux|nul|com[0-9]|lpt[0-9])$`)
+
+	// reserved word
+	fp = filenameReservedRegex.ReplaceAllString(fp, replacement)
+
+	// continue
+	fp = reControlCharsRegex.ReplaceAllString(fp, replacement)
+	fp = reRelativePathRegex.ReplaceAllString(fp, replacement)
+	fp = filenameReservedWindowsNamesRegex.ReplaceAllString(fp, replacement)
+	return fp
+}
+
+func DownloadFile(URL string, localPath string, isOverwrite bool, titleBar string) error {
 	timeStart := time.Now().Unix()
 
 	fi, err := os.Stat(localPath)
@@ -104,7 +124,7 @@ func DownloadFile(URL string, localPath string, isOverwrite bool) error {
 		contentLength = resp.ContentLength
 	}
 
-	bar := Config.SetBar(contentLength, "downloading").Bar
+	bar := Config.SetBar(contentLength, titleBar).Bar
 	_, err = io.Copy(io.MultiWriter(fileTemp, bar), resp.Body)
 	bar.Finish()
 
