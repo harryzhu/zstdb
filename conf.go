@@ -260,13 +260,13 @@ func (c *Conf) ToError(s string) (err error) {
 func (c *Conf) RequiredKeys(m []string) {
 	for _, k := range m {
 		if c.Item[k] == "" {
-			zapLogger.Fatal("cannot be empty, pls use ./confctl set --name= --val= ", zap.String("name", k))
+			zapLogger.Fatal("cannot be empty, pls use ./sqlconfctl set --name= --val= ", zap.String("name", k))
 		}
 	}
 }
 
-func (c *Conf) AlwaysPostRun() *Conf {
+func (c *Conf) AlwaysPostRun() error {
 	c.Logger.MailReportCurrentError()
 
-	return c
+	return nil
 }

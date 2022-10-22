@@ -116,7 +116,7 @@ func (l *Logger) MailReportCurrentError() error {
 	}
 
 	if fi, err := os.Stat(l.CurrentErrorLogFile); err == nil {
-		if fi.Size() > 16 {
+		if fi.Size() > 0 {
 			cnt, err := ioutil.ReadFile(l.CurrentErrorLogFile)
 			if err == nil {
 
