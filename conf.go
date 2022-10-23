@@ -16,11 +16,12 @@ import (
 )
 
 type Conf struct {
-	db     *sql.DB
-	Item   map[string]string
-	Logger *Logger
-	Mail   *Mail
-	Bar    *progressbar.ProgressBar
+	db       *sql.DB
+	Item     map[string]string
+	Logger   *Logger
+	Mail     *Mail
+	Bar      *progressbar.ProgressBar
+	H2Server *H2Server
 }
 
 var Config *Conf
@@ -193,6 +194,11 @@ func (c *Conf) SetLogger() *Conf {
 
 func (c *Conf) SetBar(max int64, title string) *Conf {
 	c.Bar = initProgressBar(max, title)
+	return c
+}
+
+func (c *Conf) SetH2Server() *Conf {
+	c.H2Server = h2server
 	return c
 }
 

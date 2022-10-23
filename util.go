@@ -4,6 +4,8 @@ import (
 	"io"
 	"io/ioutil"
 
+	//"net"
+
 	//"log"
 	"net/http"
 	"regexp"
@@ -80,7 +82,7 @@ func Filepathify(fp string) string {
 	return fp
 }
 
-func DownloadFile(URL string, localPath string, isOverwrite bool, titleBar string) error {
+func DownloadFile(URL string, localPath string, isOverwrite bool, barTitle string) error {
 	timeStart := time.Now().Unix()
 
 	fi, err := os.Stat(localPath)
@@ -102,11 +104,25 @@ func DownloadFile(URL string, localPath string, isOverwrite bool, titleBar strin
 		}
 	}
 
-	resp, err := http.Get(URL)
+	req, err := http.NewRequest("GET", URL, nil)
+	req.Header.Add("Accept-Encoding", "identity")
+	req.Close = true
+
+	if err != nil {
+		zapLogger.Error("DownloadFile:error(http-NewRequest)", zap.Error(err))
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+
+	//resp, err := http.Get(URL)
 
 	if err != nil {
 		zapLogger.Error("DownloadFile:error(http-get)", zap.Error(err))
 		return err
+	} else {
+		zapLogger.Info("Status",
+			zap.String("proto", resp.Proto),
+			zap.Int("status-code", resp.StatusCode))
 	}
 	defer resp.Body.Close()
 
@@ -124,7 +140,7 @@ func DownloadFile(URL string, localPath string, isOverwrite bool, titleBar strin
 		contentLength = resp.ContentLength
 	}
 
-	bar := Config.SetBar(contentLength, titleBar).Bar
+	bar := Config.SetBar(contentLength, barTitle).Bar
 	_, err = io.Copy(io.MultiWriter(fileTemp, bar), resp.Body)
 	bar.Finish()
 
