@@ -49,36 +49,6 @@ func (h2s *H2Server) WithTLS(c, k string) *H2Server {
 	return h2s
 }
 
-// func (hh *h2sHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-// 	if r.URL.Path == "/remote-shutdown/bbc" {
-// 		fmt.Fprintf(w, "shutdown")
-// 	} else {
-// 		fullPath := filepath.Join(h2server.StaticRootDir, r.URL.Path)
-// 		zapLogger.Info("file", zap.String("path", fullPath))
-// 		_, err := os.Stat(fullPath)
-// 		if err != nil {
-// 			fmt.Fprintf(w, "404 page not found")
-// 		}
-// 		f, err := os.Open(fullPath)
-// 		if err != nil {
-// 			fmt.Fprintf(w, "404 page not found(open)")
-// 		}
-// 		defer f.Close()
-
-// 		fd, err := ioutil.ReadFile(fullPath)
-// 		if err != nil {
-// 			fmt.Fprintf(w, "404 page not found(read)")
-// 		}
-// 		fmime := mime.TypeByExtension(filepath.Ext(fullPath))
-// 		fmt.Println("mime:", fmime)
-// 		w.Header().Set("Content-Type", fmime)
-
-// 		w.Write(fd)
-// 	}
-// 	w.Header().Set("Content-Type", "text/html")
-// 	fmt.Fprintf(w, "OK")
-// }
-
 func (h2s *H2Server) runH2Server() {
 
 	if h2s.StaticRootDir == "" {
@@ -90,21 +60,26 @@ func (h2s *H2Server) runH2Server() {
 	}
 
 	if h2s.TLScert == "" {
-		h2s.TLScert = "cert.pem"
+		h2s.TLScert = "./cert.pem"
+		zapLogger.Error("you have to set a trusted cert")
 	}
 
 	if h2s.TLSkey == "" {
-		h2s.TLSkey = "priv.key"
+		h2s.TLSkey = "./priv.key"
+		zapLogger.Error("you have to set a trusted key")
 	}
 
+	addr := strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port)}, ":")
 	server := http.Server{
-		Addr:    strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port)}, ":"),
+		Addr:    addr,
 		Handler: http.FileServer(http.Dir(h2s.StaticRootDir)),
 	}
 
+	visitURL := "https://your-domain-same-as-your-cert-key:" + strconv.Itoa(h2s.Port) + "/"
+
 	zapLogger.Info("http2 server",
 		zap.String("StaticRootDir", h2s.StaticRootDir),
-		zap.Int("Port", h2s.Port),
+		zap.String("Address", visitURL),
 		zap.String("TLScert", h2s.TLScert),
 		zap.String("TLSkey", h2s.TLSkey),
 	)

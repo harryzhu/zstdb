@@ -29,6 +29,7 @@ func RemoteShutdownHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("shutdown the server in 3 seconds..."))
 	go func() {
 		time.Sleep(3 * time.Second)
+		zapLogger.Info("app will exit")
 		os.Exit(0)
 	}()
 
