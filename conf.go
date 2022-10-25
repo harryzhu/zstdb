@@ -138,6 +138,47 @@ func (c *Conf) Set(k, v string) *Conf {
 	return c
 }
 
+func (c *Conf) Push(k, v string) *Conf {
+	k = strings.Trim(k, " ")
+	v = strings.Trim(v, " ")
+	vlist := StringToSlice(v)
+
+	var id, name, val string
+	var valList []string
+	q := "select * from settings where name=?"
+	err := c.db.QueryRow(q, k).Scan(&id, &name, &val)
+
+	if err != nil {
+		q = "INSERT INTO settings(val,name) VALUES(?,?)"
+		zapLogger.Info("insert")
+	} else {
+		q = "update settings set val=? where name=?"
+		zapLogger.Info("update")
+		valList = StringToSlice(val)
+
+		for _, newVal := range vlist {
+			zapLogger.Info("update", zap.String("range valList", newVal))
+			valList = append(valList, newVal)
+		}
+
+	}
+
+	stmt, err := c.db.Prepare(q)
+	if err != nil {
+		zapLogger.Fatal("set:db-prepare", zap.Error(err))
+	}
+
+	v = SliceToString(SliceUnique(valList))
+	zapLogger.Info("update", zap.String("valList", v))
+
+	_, err = stmt.Exec(v, k)
+	if err != nil {
+		zapLogger.Fatal("set:stmt-exec", zap.Error(err))
+	}
+
+	return c
+}
+
 func (c *Conf) Delete(k string) *Conf {
 	if len(k) == 0 || len(k) > 64 {
 		zapLogger.Fatal("--name length must be greater than 0 and less then 64")
@@ -236,6 +277,14 @@ func (c *Conf) ToString(s string) string {
 	}
 
 	return ""
+}
+
+func (c *Conf) ToBool(s string) bool {
+	itm := strings.ToLower(c.Item[s])
+	if itm == "false" || itm == "0" {
+		return false
+	}
+	return true
 }
 
 func (c *Conf) ToInt(s string) int {

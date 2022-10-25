@@ -19,10 +19,25 @@ import (
 	"go.uber.org/zap"
 )
 
+func SliceUnique(sl []string) (u []string) {
+	var m map[string]int = make(map[string]int, 16)
+	for _, v := range sl {
+		if v == "" {
+			continue
+		}
+		m[v] = 0
+	}
+	for k, _ := range m {
+		u = append(u, k)
+	}
+	return u
+}
+
 func StringToSlice(s string) (sl []string) {
 	s = strings.ReplaceAll(s, ",", ";")
 	s = strings.Trim(s, ";")
 	ss := strings.Split(s, ";")
+
 	for _, v := range ss {
 		if v == "" {
 			continue
@@ -31,6 +46,18 @@ func StringToSlice(s string) (sl []string) {
 	}
 
 	return sl
+}
+
+func SliceToString(l []string) (s string) {
+	var ss []string
+	for _, v := range l {
+		if v == "" {
+			continue
+		}
+		ss = append(ss, v)
+	}
+
+	return strings.Join(ss, ";")
 }
 
 func MakeDirs(s string) error {

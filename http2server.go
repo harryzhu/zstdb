@@ -67,6 +67,16 @@ func (h2s *H2Server) WithAllowIP(s string) *H2Server {
 	return h2s
 }
 
+func (h2s *H2Server) WithBlockIP(s string) *H2Server {
+	h2s.BlockIPList = append(h2s.BlockIPList, s)
+	return h2s
+}
+
+func (h2s *H2Server) WithDefaultAllow(b bool) *H2Server {
+	h2s.DefaultAllow = b
+	return h2s
+}
+
 func (h2s *H2Server) runH2Server() {
 
 	if h2s.StaticRootDir == "" {
@@ -100,12 +110,17 @@ func (h2s *H2Server) runH2Server() {
 	}
 
 	visitURL := "https://your-domain-same-as-your-cert-key:" + strconv.Itoa(h2s.Port) + "/"
+	allowiplist := strings.Join(h2s.AllowIPList, ";")
+	blockiplist := strings.Join(h2s.BlockIPList, ";")
 
 	zapLogger.Info("http2 server",
 		zap.String("StaticRootDir", h2s.StaticRootDir),
 		zap.String("Address", visitURL),
 		zap.String("TLScert", h2s.TLScert),
 		zap.String("TLSkey", h2s.TLSkey),
+		zap.String("AllowIPList", allowiplist),
+		zap.String("BlockIPList", blockiplist),
+		zap.Bool("DefaultAllow", h2s.DefaultAllow),
 	)
 
 	http2.ConfigureServer(&server, &http2.Server{})
