@@ -46,6 +46,14 @@ func MakeDirs(s string) error {
 	return nil
 }
 
+func GetEnv(s string, d string) string {
+	if os.Getenv(s) == "" {
+		zapLogger.Warn("GetEnv:empty,use default instead", zap.String("env", s), zap.String("default", d))
+		return d
+	}
+	return os.Getenv(s)
+}
+
 func GetURLContent(URL string) (cnt string, err error) {
 	resp, err := http.Get(URL)
 	if err != nil {

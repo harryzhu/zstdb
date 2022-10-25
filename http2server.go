@@ -1,6 +1,7 @@
 package sqlconf
 
 import (
+	"os"
 	//"io/ioutil"
 	//"mime"
 	"net/http"
@@ -24,9 +25,21 @@ type H2Server struct {
 	Port          int
 	TLScert       string
 	TLSkey        string
+	AllowIPList   []string
+	BlockIPList   []string
+	DefaultAllow  bool
 }
 
-var h2server *H2Server = &H2Server{}
+var h2server *H2Server = &H2Server{
+	StaticRootDir: "./",
+	IP:            "0.0.0.0",
+	Port:          8080,
+	TLScert:       "./cert.pem",
+	TLSkey:        "./priv.key",
+	AllowIPList:   []string{},
+	BlockIPList:   []string{},
+	DefaultAllow:  true,
+}
 
 func (h2s *H2Server) WithStaticRootDir(s string) *H2Server {
 	h2s.StaticRootDir = s
@@ -49,6 +62,11 @@ func (h2s *H2Server) WithTLS(c, k string) *H2Server {
 	return h2s
 }
 
+func (h2s *H2Server) WithAllowIP(s string) *H2Server {
+	h2s.AllowIPList = append(h2s.AllowIPList, s)
+	return h2s
+}
+
 func (h2s *H2Server) runH2Server() {
 
 	if h2s.StaticRootDir == "" {
@@ -60,13 +78,19 @@ func (h2s *H2Server) runH2Server() {
 	}
 
 	if h2s.TLScert == "" {
-		h2s.TLScert = "./cert.pem"
 		zapLogger.Error("you have to set a trusted cert")
 	}
 
 	if h2s.TLSkey == "" {
-		h2s.TLSkey = "./priv.key"
 		zapLogger.Error("you have to set a trusted key")
+	}
+
+	if _, err := os.Stat(h2s.TLScert); err != nil {
+		zapLogger.Error("h2s.TLScert does not exist", zap.Error(err))
+	}
+
+	if _, err := os.Stat(h2s.TLSkey); err != nil {
+		zapLogger.Error("h2s.TLSkey does not exist", zap.Error(err))
 	}
 
 	addr := strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port)}, ":")
@@ -86,8 +110,10 @@ func (h2s *H2Server) runH2Server() {
 
 	http2.ConfigureServer(&server, &http2.Server{})
 
-	server.ListenAndServeTLS(h2s.TLScert, h2s.TLSkey)
-
+	err := server.ListenAndServeTLS(h2s.TLScert, h2s.TLSkey)
+	if err != nil {
+		zapLogger.Error("runControlServer", zap.Error(err))
+	}
 }
 
 func (h2s *H2Server) StartServer() {

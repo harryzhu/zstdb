@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -112,6 +113,8 @@ func (c *Conf) Close() {
 }
 
 func (c *Conf) Set(k, v string) *Conf {
+	k = strings.Trim(k, " ")
+	v = strings.Trim(v, " ")
 	var id, name, val string
 	q := "select * from settings where name=?"
 	err := c.db.QueryRow(q, k).Scan(&id, &name, &val)
