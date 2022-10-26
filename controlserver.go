@@ -10,7 +10,7 @@ import (
 
 	//"fmt"
 	"go.uber.org/zap"
-	//"golang.org/x/net/http2"
+	"golang.org/x/net/http2"
 )
 
 func GetClientIP(r *http.Request) string {
@@ -45,11 +45,7 @@ func IsAnyContinue(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	if IsAnyContinue(w, r) == false {
-		return
-	}
 	w.Header().Set("Content-Type", "text/html")
-
 	cip := GetClientIP(r)
 
 	if r.URL.Path == "/" {
@@ -66,9 +62,6 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RemoteShutdownHandler(w http.ResponseWriter, r *http.Request) {
-	if IsAnyContinue(w, r) == false {
-		return
-	}
 	w.Header().Set("Content-Type", "text/html")
 
 	w.WriteHeader(http.StatusGone)
@@ -81,23 +74,52 @@ func RemoteShutdownHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type ControlHandler struct {
+func EchoHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("hi"))
+
 }
 
-func (ControlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("----------"))
+type anyHandler struct {
+}
+
+func (ah anyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	cip := GetClientIP(r)
+	isa := IsAllow(cip)
+	if isa != true {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(cip + ", " + r.Proto + " ,you cannot visit this site."))
+		return
+	}
+	if r.URL.Path == "/" {
+		IndexHandler(w, r)
+	}
+
+	if r.URL.Path == "/remote-shutdown" {
+		RemoteShutdownHandler(w, r)
+	}
+
+	if r.URL.Path == "/echo" {
+		EchoHandler(w, r)
+	}
+
 }
 
 func (h2s *H2Server) runControlServer() {
 	addr := strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port + 1)}, ":")
 
-	mux := http.NewServeMux()
-	mux.Handle("/*", ControlHandler{})
-	mux.HandleFunc("/", IndexHandler)
-	mux.HandleFunc("/remote-shutdown", RemoteShutdownHandler)
+	controlServer := http.Server{
+		Addr:    addr,
+		Handler: &anyHandler{},
+	}
 
 	zapLogger.Info("runControlServer", zap.String("address", addr))
-	err := http.ListenAndServeTLS(addr, h2s.TLScert, h2s.TLSkey, mux)
+	http2.ConfigureServer(&controlServer, &http2.Server{})
+
+	zapLogger.Info("runControlServer", zap.String("address", addr))
+	err := controlServer.ListenAndServeTLS(h2s.TLScert, h2s.TLSkey)
 	if err != nil {
 		zapLogger.Error("runControlServer", zap.Error(err))
 	}

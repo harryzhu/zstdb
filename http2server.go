@@ -102,6 +102,22 @@ func IsAllow(ipaddr string) bool {
 	}
 }
 
+type staticHandler struct {
+	rootDir string
+}
+
+func (sh staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	cip := GetClientIP(r)
+	isa := IsAllow(cip)
+	if isa != true {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(cip + ", " + r.Proto + " ,you cannot visit this site."))
+		return
+	}
+
+	http.FileServer(http.Dir(sh.rootDir)).ServeHTTP(w, r)
+}
+
 func (h2s *H2Server) runH2Server() {
 
 	if h2s.StaticRootDir == "" {
@@ -129,9 +145,14 @@ func (h2s *H2Server) runH2Server() {
 	}
 
 	addr := strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port)}, ":")
+	// server := http.Server{
+	// 	Addr:    addr,
+	// 	Handler: http.FileServer(http.Dir(h2s.StaticRootDir)),
+	// }
+
 	server := http.Server{
 		Addr:    addr,
-		Handler: http.FileServer(http.Dir(h2s.StaticRootDir)),
+		Handler: &staticHandler{rootDir: h2s.StaticRootDir},
 	}
 
 	visitURL := "https://your-domain-same-as-your-cert-key:" + strconv.Itoa(h2s.Port) + "/"
@@ -164,7 +185,7 @@ func (h2s *H2Server) runH2Server() {
 	zapLogger.Info("runH2Server", zap.String("address", addr))
 	err := server.ListenAndServeTLS(h2s.TLScert, h2s.TLSkey)
 	if err != nil {
-		zapLogger.Error("runControlServer", zap.Error(err))
+		zapLogger.Error("runH2Server", zap.Error(err))
 	}
 }
 
