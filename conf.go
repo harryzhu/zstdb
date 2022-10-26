@@ -37,6 +37,8 @@ func init() {
 	Config = &Conf{}
 	Config.SetLogger()
 
+	zapLogger = Config.Logger.ZapLogger
+
 	defaultConfig["app_first_run"] = strconv.FormatInt(ts_now, 10)
 	defaultConfig["app_conf_update"] = strconv.FormatInt(ts_now, 10)
 	defaultConfig["app_name"] = "sqlconf"
@@ -48,6 +50,11 @@ func init() {
 	defaultConfig["app_temp_dir"] = "./temp"
 
 	cFile := "./conf.db"
+	sqlconfenv := strings.ToLower(GetEnv("SQLCONFENV", ""))
+	if sqlconfenv != "" {
+		cFile = strings.Join([]string{"./conf", sqlconfenv, "db"}, ".")
+	}
+	zapLogger.Info("config file", zap.String("db", cFile))
 	firstRun := false
 
 	_, err := os.Stat(cFile)
@@ -274,6 +281,8 @@ func (c *Conf) Print() {
 func (c *Conf) ToString(s string) string {
 	if _, ok := c.Item[s]; ok {
 		return c.Item[s]
+	} else {
+		log.Fatal("***ERROR***::item does not exist in conf: ", s)
 	}
 
 	return ""
