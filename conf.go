@@ -18,6 +18,7 @@ import (
 
 type Conf struct {
 	db       *sql.DB
+	DBFile   string
 	Item     map[string]string
 	Logger   *Logger
 	Mail     *Mail
@@ -37,8 +38,6 @@ func init() {
 	Config = &Conf{}
 	Config.SetLogger()
 
-	zapLogger = Config.Logger.ZapLogger
-
 	defaultConfig["app_first_run"] = strconv.FormatInt(ts_now, 10)
 	defaultConfig["app_conf_update"] = strconv.FormatInt(ts_now, 10)
 	defaultConfig["app_name"] = "sqlconf"
@@ -49,20 +48,25 @@ func init() {
 	defaultConfig["app_logs_dir"] = "./logs"
 	defaultConfig["app_temp_dir"] = "./temp"
 
-	cFile := "./conf.db"
-	sqlconfenv := strings.ToLower(GetEnv("SQLCONFENV", ""))
-	if sqlconfenv != "" {
-		cFile = strings.Join([]string{"./conf", sqlconfenv, "db"}, ".")
+	if Config.DBFile == "" {
+		sqlconfenv := strings.ToLower(GetEnv("SQLCONFENV", ""))
+		if sqlconfenv != "" {
+			Config.DBFile = strings.Join([]string{"./conf", sqlconfenv, "db"}, ".")
+		} else {
+			Config.DBFile = "./conf.db"
+		}
 	}
-	zapLogger.Info("config file", zap.String("db", cFile))
+
+	zapLogger.Info("config file", zap.String("db", Config.DBFile))
+
 	firstRun := false
 
-	_, err := os.Stat(cFile)
+	_, err := os.Stat(Config.DBFile)
 	if err != nil {
 		firstRun = true
 		zapLogger.Info("First Run")
 	}
-	Config.Open(cFile)
+	Config.Open()
 
 	if firstRun == true {
 		Config.LoadData(defaultConfig)
@@ -90,10 +94,12 @@ func (c *Conf) Refresh() *Conf {
 	return c
 }
 
-func (c *Conf) Open(f string) *Conf {
-	db, err := sql.Open("sqlite3", f)
+func (c *Conf) Open() *Conf {
+	db, err := sql.Open("sqlite3", c.DBFile)
 	if err != nil {
 		zapLogger.Fatal("conf:open", zap.Error(err))
+	} else {
+		zapLogger.Info("conf:open", zap.String("file", c.DBFile))
 	}
 
 	settingsTable := `
@@ -282,7 +288,7 @@ func (c *Conf) ToString(s string) string {
 	if _, ok := c.Item[s]; ok {
 		return c.Item[s]
 	} else {
-		log.Fatal("***ERROR***::item does not exist in conf: ", s)
+		log.Println("***ERROR***::item does not exist in conf: ", s)
 	}
 
 	return ""
