@@ -32,17 +32,26 @@ func GetClientIP(r *http.Request) string {
 	return ""
 }
 
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
+func IsAnyContinue(w http.ResponseWriter, r *http.Request) bool {
 	cip := GetClientIP(r)
-	zapLogger.Info("client", zap.String("ip", cip))
-	zapLogger.Info("allow/block", zap.Bool("is-allow", IsAllow(cip)))
-	if IsAllow(cip) != true {
+	isa := IsAllow(cip)
+	zapLogger.Info("allow/block", zap.String("client-ip", cip), zap.Bool("is-allow", isa))
+	if isa != true {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte(cip + ",you cannot visit this site.<br/>"))
-		w.Write([]byte(r.Proto))
+		w.Write([]byte(cip + ", " + r.Proto + " ,you cannot visit this site."))
+		return false
+	}
+	return true
+}
+
+func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	if IsAnyContinue(w, r) == false {
 		return
 	}
+	w.Header().Set("Content-Type", "text/html")
+
+	cip := GetClientIP(r)
+
 	if r.URL.Path == "/" {
 		w.WriteHeader(http.StatusOK)
 
@@ -57,7 +66,11 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RemoteShutdownHandler(w http.ResponseWriter, r *http.Request) {
+	if IsAnyContinue(w, r) == false {
+		return
+	}
 	w.Header().Set("Content-Type", "text/html")
+
 	w.WriteHeader(http.StatusGone)
 	w.Write([]byte("shutdown the server in 3 seconds..."))
 	go func() {
@@ -68,13 +81,22 @@ func RemoteShutdownHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+type ControlHandler struct {
+}
+
+func (ControlHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("----------"))
+}
+
 func (h2s *H2Server) runControlServer() {
 	addr := strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port + 1)}, ":")
 
 	mux := http.NewServeMux()
+	mux.Handle("/*", ControlHandler{})
 	mux.HandleFunc("/", IndexHandler)
 	mux.HandleFunc("/remote-shutdown", RemoteShutdownHandler)
 
+	zapLogger.Info("runControlServer", zap.String("address", addr))
 	err := http.ListenAndServeTLS(addr, h2s.TLScert, h2s.TLSkey, mux)
 	if err != nil {
 		zapLogger.Error("runControlServer", zap.Error(err))

@@ -1,7 +1,9 @@
 package sqlconf
 
 import (
+	"net/url"
 	"os"
+
 	//"io/ioutil"
 	//"mime"
 	"net/http"
@@ -20,23 +22,29 @@ import (
 )
 
 type H2Server struct {
-	StaticRootDir string
-	IP            string
-	Port          int
-	TLScert       string
-	TLSkey        string
-	DefaultAllow  bool
+	StaticRootDir   string
+	IP              string
+	Port            int
+	TLScert         string
+	TLSkey          string
+	DefaultAllow    bool
+	EnableControl   bool
+	EnableProxy     bool
+	ReverseProxyURL string
 }
 
 var AllowBlockIPMap map[string]int = make(map[string]int, 32)
 
 var h2server *H2Server = &H2Server{
-	StaticRootDir: "./",
-	IP:            "0.0.0.0",
-	Port:          8080,
-	TLScert:       "./cert.pem",
-	TLSkey:        "./priv.key",
-	DefaultAllow:  true,
+	StaticRootDir:   "./",
+	IP:              "0.0.0.0",
+	Port:            8080,
+	TLScert:         "./cert.pem",
+	TLSkey:          "./priv.key",
+	DefaultAllow:    true,
+	EnableControl:   false,
+	EnableProxy:     false,
+	ReverseProxyURL: "",
 }
 
 func (h2s *H2Server) WithStaticRootDir(s string) *H2Server {
@@ -153,22 +161,60 @@ func (h2s *H2Server) runH2Server() {
 
 	http2.ConfigureServer(&server, &http2.Server{})
 
+	zapLogger.Info("runH2Server", zap.String("address", addr))
 	err := server.ListenAndServeTLS(h2s.TLScert, h2s.TLSkey)
 	if err != nil {
 		zapLogger.Error("runControlServer", zap.Error(err))
 	}
 }
 
+func (h2s *H2Server) runReverseProxy() error {
+	if h2s.ReverseProxyURL == "" {
+		zapLogger.Error("ReverseProxyURL cannot be empty")
+		return nil
+	}
+	remote, err := url.Parse(h2s.ReverseProxyURL)
+	if err != nil {
+		zapLogger.Error("runReverseProxy", zap.String("reverseUrl", h2s.ReverseProxyURL), zap.Error(err))
+		return err
+	}
+
+	proxy := GoReverseProxy(&RProxy{
+		remote: remote,
+	})
+	addr := strings.Join([]string{h2s.IP, strconv.Itoa(h2s.Port + 2)}, ":")
+
+	zapLogger.Info("runReverseProxy", zap.String("address", addr))
+	err = http.ListenAndServeTLS(addr, h2s.TLScert, h2s.TLSkey, proxy)
+
+	if err != nil {
+		zapLogger.Error("runReverseProxy", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
 func (h2s *H2Server) StartServer() {
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		h2s.runH2Server()
 	}()
 
-	go func() {
-		h2s.runControlServer()
-	}()
+	if h2s.EnableControl == true {
+		wg.Add(1)
+		go func() {
+			h2s.runControlServer()
+		}()
+	}
+
+	if h2s.EnableProxy == true {
+		wg.Add(1)
+		go func() {
+			h2s.runReverseProxy()
+		}()
+	}
 
 	wg.Wait()
 }
