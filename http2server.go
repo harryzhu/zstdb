@@ -25,10 +25,10 @@ type H2Server struct {
 	Port          int
 	TLScert       string
 	TLSkey        string
-	AllowIPList   []string
-	BlockIPList   []string
 	DefaultAllow  bool
 }
+
+var AllowBlockIPMap map[string]int = make(map[string]int, 32)
 
 var h2server *H2Server = &H2Server{
 	StaticRootDir: "./",
@@ -36,8 +36,6 @@ var h2server *H2Server = &H2Server{
 	Port:          8080,
 	TLScert:       "./cert.pem",
 	TLSkey:        "./priv.key",
-	AllowIPList:   []string{},
-	BlockIPList:   []string{},
 	DefaultAllow:  true,
 }
 
@@ -63,18 +61,37 @@ func (h2s *H2Server) WithTLS(c, k string) *H2Server {
 }
 
 func (h2s *H2Server) WithAllowIP(s string) *H2Server {
-	h2s.AllowIPList = append(h2s.AllowIPList, s)
+	AllowBlockIPMap[s] = 1
 	return h2s
 }
 
 func (h2s *H2Server) WithBlockIP(s string) *H2Server {
-	h2s.BlockIPList = append(h2s.BlockIPList, s)
+	AllowBlockIPMap[s] = -1
 	return h2s
 }
 
 func (h2s *H2Server) WithDefaultAllow(b bool) *H2Server {
 	h2s.DefaultAllow = b
 	return h2s
+}
+
+func IsAllow(ipaddr string) bool {
+	var ipint int = 0
+	if _, ok := AllowBlockIPMap[ipaddr]; ok {
+		ipint = AllowBlockIPMap[ipaddr]
+	}
+
+	if h2server.DefaultAllow == true {
+		if ipint == -1 {
+			return false
+		}
+		return true
+	} else {
+		if ipint == 1 {
+			return true
+		}
+		return false
+	}
 }
 
 func (h2s *H2Server) runH2Server() {
@@ -110,8 +127,19 @@ func (h2s *H2Server) runH2Server() {
 	}
 
 	visitURL := "https://your-domain-same-as-your-cert-key:" + strconv.Itoa(h2s.Port) + "/"
-	allowiplist := strings.Join(h2s.AllowIPList, ";")
-	blockiplist := strings.Join(h2s.BlockIPList, ";")
+	var allowIPList []string
+	var blockIPList []string
+	for k, v := range AllowBlockIPMap {
+		if v == 1 {
+			allowIPList = append(allowIPList, k)
+		}
+
+		if v == -1 {
+			blockIPList = append(blockIPList, k)
+		}
+	}
+	allowiplist := strings.Join(allowIPList, ";")
+	blockiplist := strings.Join(blockIPList, ";")
 
 	zapLogger.Info("http2 server",
 		zap.String("StaticRootDir", h2s.StaticRootDir),

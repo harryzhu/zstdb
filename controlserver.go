@@ -36,10 +36,18 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	cip := GetClientIP(r)
 	zapLogger.Info("client", zap.String("ip", cip))
+	zapLogger.Info("allow/block", zap.Bool("is-allow", IsAllow(cip)))
+	if IsAllow(cip) != true {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(cip + ",you cannot visit this site.<br/>"))
+		w.Write([]byte(r.Proto))
+		return
+	}
 	if r.URL.Path == "/" {
 		w.WriteHeader(http.StatusOK)
 
-		w.Write([]byte("welcome\n"))
+		w.Write([]byte("welcome<br/>"))
+		w.Write([]byte(cip + "<br/>"))
 		w.Write([]byte(r.Proto))
 	} else {
 		w.WriteHeader(http.StatusNotFound)
