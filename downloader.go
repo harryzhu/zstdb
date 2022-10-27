@@ -2,6 +2,8 @@ package sqlconf
 
 import (
 	"io"
+	//"net/url"
+
 	//"io/ioutil"
 	"path/filepath"
 
@@ -132,7 +134,7 @@ func walkFunc(path string, finfo os.FileInfo, err error) error {
 			line = strings.ReplaceAll(path, "\\", "/")
 			genFiles = append(genFiles, line)
 		} else {
-			zapLogger.Info("walkFunc(skip)", zap.Int64("expired(age)", ageSecond), zap.String("file", path))
+			zapLogger.Info("walkFunc(skip)", zap.Int64("expired(age)", ageSecond), zap.Int64("maxAgeSecond(sec)", maxAgeSecond), zap.String("file", path))
 		}
 
 		return nil
@@ -145,16 +147,17 @@ func GenFileListByDir(dirPath, urlPrefix, outFile string, maxDays int64) error {
 		return err
 	}
 
+	if maxDays <= 0 {
+		maxDays = 365 * 100
+	}
+	maxAgeSecond = 86400 * maxDays
+
 	err := filepath.Walk(dirPath, walkFunc)
 	if err != nil {
 		zapLogger.Error("GenListByDir-Walk", zap.Error(err))
 		return err
 	}
 
-	if maxDays <= 0 {
-		maxDays = 365 * 100
-	}
-	maxAgeSecond = 86400 * maxDays
 	zapLogger.Info("GenFileListByDir", zap.Int64("max-age-second", maxAgeSecond))
 
 	urlPrefix = strings.Trim(urlPrefix, "/")
@@ -167,7 +170,9 @@ func GenFileListByDir(dirPath, urlPrefix, outFile string, maxDays int64) error {
 		if filepath.Base(line) == filepath.Base(outFile) {
 			continue
 		}
+
 		line = strings.Replace(line, dirPathBackSlash, urlPrefix, 1)
+		line = strings.Trim(line, "/")
 		outLines = append(outLines, line)
 		zapLogger.Info(line)
 	}

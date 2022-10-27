@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,9 +18,11 @@ import (
 )
 
 type Conf struct {
-	db       *sql.DB
-	AppName  string
-	LogsDir  string
+	db      *sql.DB
+	envTag  string
+	AppName string
+	LogsDir string
+
 	DBFile   string
 	Item     map[string]string
 	Logger   *Logger
@@ -53,15 +56,13 @@ func NewConf(appName string, appLogsDir string) *Conf {
 	defaultConfig["app_logs_dir"] = "./logs"
 	defaultConfig["app_temp_dir"] = "./temp"
 
-	if Config.DBFile == "" {
-		sqlconfenv := strings.ToLower(GetEnv("SQLCONFENV", ""))
-		if sqlconfenv != "" {
-			Config.DBFile = strings.Join([]string{"./conf", sqlconfenv, "db"}, ".")
-		} else {
-			Config.DBFile = "./conf.db"
-		}
+	Config.envTag = strings.ToLower(GetEnv("SQLCONFENVTAG", ""))
+	if Config.envTag == "" {
+		Config.envTag = "default"
 	}
 
+	Config.DBFile = strings.Join([]string{"./conf", Config.envTag, "conf.db"}, "/")
+	MakeDirs(filepath.Dir(Config.DBFile))
 	zapLogger.Info("config file", zap.String("db", Config.DBFile))
 
 	firstRun := false
