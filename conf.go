@@ -18,6 +18,8 @@ import (
 
 type Conf struct {
 	db       *sql.DB
+	AppName  string
+	LogsDir  string
 	DBFile   string
 	Item     map[string]string
 	Logger   *Logger
@@ -34,8 +36,11 @@ var (
 	zapLogger     *zap.Logger
 )
 
-func init() {
-	Config = &Conf{}
+func NewConf(appName string, appLogsDir string) *Conf {
+	Config = &Conf{
+		AppName: appName,
+		LogsDir: appLogsDir,
+	}
 	Config.SetLogger()
 
 	defaultConfig["app_first_run"] = strconv.FormatInt(ts_now, 10)
@@ -71,14 +76,21 @@ func init() {
 	if firstRun == true {
 		Config.LoadData(defaultConfig)
 	}
-	Config.Refresh()
+	Config.Refresh().SetLogger()
+
 	Config.RequiredKeys([]string{"app_name", "app_logs_dir"})
+
+	return Config
+}
+
+func init() {
+
 }
 
 func (c *Conf) Refresh() *Conf {
 	rows, err := c.db.Query("select * from settings")
 	if err != nil {
-		zapLogger.Fatal("conf-fefresh", zap.Error(err))
+		zapLogger.Fatal("conf-refresh", zap.Error(err))
 	}
 
 	var id, name, val string
@@ -233,15 +245,13 @@ func (c *Conf) LoadData(m map[string]string) *Conf {
 
 func (c *Conf) SetLogger() *Conf {
 	var l *Logger = &Logger{}
-	logs_dir := "./logs"
-	app_name := "sqlconf"
-
-	if c.ToString("app_logs_dir") != "" {
-		logs_dir = c.ToString("app_logs_dir")
+	logs_dir := strings.ToLower(c.LogsDir)
+	app_name := strings.ToLower(c.AppName)
+	if logs_dir == "" {
+		logs_dir = "./logs"
 	}
-
-	if c.ToString("app_name") != "" {
-		app_name = c.ToString("app_name")
+	if app_name == "" {
+		app_name = "sqlconf"
 	}
 
 	c.Logger = l.initLogger(logs_dir, app_name)

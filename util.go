@@ -3,6 +3,7 @@ package sqlconf
 import (
 	"io"
 	"io/ioutil"
+	"path/filepath"
 
 	//"net"
 
@@ -198,6 +199,62 @@ func DownloadFile(URL string, localPath string, isOverwrite bool, barTitle strin
 		zap.String("proto", resp.Proto),
 		zap.Int64("content-length", resp.ContentLength),
 		zap.String("duration", strconv.FormatInt(timeStop-timeStart, 10)))
+
+	return nil
+}
+
+var genFiles []string
+
+func walkFunc(path string, info os.FileInfo, err error) error {
+	var line string
+	if info == nil {
+		zapLogger.Warn("can't find:(" + path + ")")
+		return nil
+	}
+	if info.IsDir() {
+		return nil
+	} else {
+		line = strings.ReplaceAll(path, "\\", "/")
+		genFiles = append(genFiles, line)
+		return nil
+	}
+}
+
+func GenFileListByDir(dirPath, urlPrefix, outFile string) error {
+	if _, err := os.Stat(dirPath); err != nil {
+		zapLogger.Error("GenListByDir", zap.Error(err))
+		return err
+	}
+
+	err := filepath.Walk(dirPath, walkFunc)
+	if err != nil {
+		zapLogger.Error("GenListByDir-Walk", zap.Error(err))
+		return err
+	}
+
+	urlPrefix = strings.Trim(urlPrefix, "/")
+	dirPathBackSlash := strings.ReplaceAll(dirPath, "\\", "/")
+	dirPathBackSlash = strings.Trim(dirPathBackSlash, "/")
+
+	var outLines []string
+	outLines = append(outLines, strings.Join([]string{"### download-list", time.Now().Format("20060102T15:04:05Z07:00")}, "@"))
+	for _, line := range genFiles {
+		if filepath.Base(line) == filepath.Base(outFile) {
+			continue
+		}
+		line = strings.Replace(line, dirPathBackSlash, urlPrefix, 1)
+		outLines = append(outLines, line)
+		zapLogger.Info(line)
+	}
+	outData := strings.Join(outLines, "\n")
+
+	err = os.WriteFile(outFile, []byte(outData), os.ModePerm)
+	if err != nil {
+		return err
+		zapLogger.Error("gen-file-list cannot be saved", zap.Error(err))
+	} else {
+		zapLogger.Info("gen-file-list was saved", zap.String("path", outFile))
+	}
 
 	return nil
 }
