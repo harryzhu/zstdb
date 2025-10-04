@@ -1,7 +1,7 @@
 package cmd
 
 func BeforeGrpcStart() error {
-	DataDir = GetEnv("zstdfs_data", "data/zstdfs")
+	DataDir = GetEnv("zstdb_data", "data/zstdfs")
 	DebugInfo("BeforeStart: DataDir", DataDir)
 	MakeDirs(DataDir)
 	if MaxUploadSizeMB <= 0 {
