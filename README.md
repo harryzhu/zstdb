@@ -2,7 +2,7 @@
 
 ## Usage
 ### 设置环境变量 `vim /etc/profile`
-```
+```Bash
     export zstdb_data="/Users/harry/data/zstdfs"
 
     # 指定数据存储路径
