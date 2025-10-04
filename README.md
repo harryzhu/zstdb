@@ -1,5 +1,11 @@
 # zstdb
 
+## Summary
+一个使用 grpc 进行交互，供其他程序使用的 KV 键值数据库，值采用 zstd 压缩
+
+## Prod
+当前产品环境用于存储大量小文件（线上约 30万+ 文件大小约 1MB 的 .mp4 文件），相同文件仅存储一次。
+
 ## Usage
 ### 设置环境变量 `vim /etc/profile`
 ```Bash
