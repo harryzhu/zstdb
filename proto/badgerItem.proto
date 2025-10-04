@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option go_package = "github.com/harryzhu/zstdfs/pbs";
+
+service Badger {
+  rpc Get (Item) returns (ItemReply) {}
+  rpc Set (Item) returns (ItemReply) {}
+  rpc Delete (Item) returns (ItemReply) {}
+  rpc Exists (Item) returns (ItemReply) {}
+  rpc List (ListFilter) returns (ListFilterReply) {}
+}
+
+// The request message containing the user's name.
+message Item {
+  bytes key = 1;
+  bytes data = 2;
+}
+
+// The response message containing the greetings
+message ItemReply {
+  int32 errcode = 1;
+  bytes status = 2;
+  bytes key = 3;
+  bytes data = 4;
+}
+
+message ListFilter{
+  string prefix = 1;
+  int32 pagenum = 2;
+}
+
+message ListFilterReply{
+  repeated string keys = 1;
+}
