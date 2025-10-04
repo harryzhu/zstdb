@@ -37,6 +37,7 @@ func UnZstdBytes(zin []byte) (out []byte, err error) {
 func GetEnv(k string, defaultVal string) string {
 	ev := os.Getenv(k)
 	if ev == "" {
+		DebugWarn("GetEnv", "cannot find ENV var: [ ", k, " ], will use default value")
 		return defaultVal
 	}
 	return ev
