@@ -18,6 +18,12 @@
 # --max-upload-size-mb 默认 16 ： 值的最大长度，单位 MB
 # --host 默认 false ： rpc 对外提供服务的 IP
 # --port 默认 false ： rpc 对外提供服务的 端口 
+
+./zstdb >/dev/null 2>&1 &
+# 后台运行
+
+./zstdb &
+# 后台运行
 ```
 
 ### 使用举例
