@@ -24,6 +24,9 @@
 # --max-upload-size-mb 默认 16 ： 值的最大长度，单位 MB
 # --host 默认 false ： rpc 对外提供服务的 IP
 # --port 默认 false ： rpc 对外提供服务的 端口 
+#
+# --disable-delete 默认 false ： 禁用删除操作，数据库只允许写人数据，不允许删除数据
+# --disable-set 默认 false ： 禁用写入操作，数据库不允许新添加数据
 
 ./zstdb >/dev/null 2>&1 &
 # 后台运行
