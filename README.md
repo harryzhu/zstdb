@@ -25,8 +25,8 @@
 # --host 默认 false ： rpc 对外提供服务的 IP
 # --port 默认 false ： rpc 对外提供服务的 端口 
 #
-# --disable-delete 默认 false ： 禁用删除操作，数据库只允许写人数据，不允许删除数据
-# --disable-set 默认 false ： 禁用写入操作，数据库不允许新添加数据
+# --disable-delete 默认 false ： 禁用删除操作，数据库只允许添加数据，不允许删除数据
+# --disable-set 默认 false ： 禁用写入操作，数据库不允许新添加数据，但可以删除数据
 
 ./zstdb >/dev/null 2>&1 &
 # 后台运行
