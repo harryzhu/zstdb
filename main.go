@@ -14,9 +14,13 @@ import (
 
 func main() {
 	wg := sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(3)
 	go func() {
 		cmd.Execute()
+	}()
+
+	go func() {
+		cmd.BadgerRunValueLogGC()
 	}()
 
 	go func() {

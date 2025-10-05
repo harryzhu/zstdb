@@ -7,6 +7,7 @@ service Badger {
   rpc Set (Item) returns (ItemReply) {}
   rpc Delete (Item) returns (ItemReply) {}
   rpc Exists (Item) returns (ItemReply) {}
+  rpc Status (Item) returns (ItemReply) {}
   rpc List (ListFilter) returns (ListFilterReply) {}
 }
 

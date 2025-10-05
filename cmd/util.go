@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,6 +19,10 @@ import (
 
 func GetNowUnix() int64 {
 	return time.Now().UTC().Unix()
+}
+
+func GetNowUnixMillo() int64 {
+	return time.Now().UTC().UnixMilli()
 }
 
 func ZstdBytes(rawin []byte) []byte {
@@ -92,6 +98,42 @@ func Int2Str(n int) string {
 	return strconv.Itoa(n)
 }
 
+func Int64ToString(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
+
+func Uint32ToString(n uint32) string {
+	return fmt.Sprintf("%v", n)
+}
+
+func Uint64ToString(n uint64) string {
+	return fmt.Sprintf("%v", n)
+}
+
+func Str2Int(n string) int {
+	s, err := strconv.Atoi(n)
+	if err != nil {
+		return 0
+	}
+	return s
+}
+
+func Str2Int64(n string) int64 {
+	s, err := strconv.ParseInt(n, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return s
+}
+
+func Str2Uint64(n string) uint64 {
+	s, err := strconv.ParseUint(n, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return s
+}
+
 func IsAnyEmpty(args ...string) bool {
 	for _, arg := range args {
 		if arg == "" {
@@ -139,6 +181,27 @@ func MapKeyOrdered(maps []map[string]int) []map[string]int {
 func ChModDir(dpath string, perm fs.FileMode) error {
 	if err := os.Chmod(dpath, perm); err != nil {
 		PrintError("ChModDir", err)
+		return err
+	}
+	return nil
+}
+
+func Map2JSON(m map[string]string) []byte {
+	bf := bytes.NewBuffer([]byte{})
+	enc := json.NewEncoder(bf)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(m)
+	if err != nil {
+		PrintError("Map2JSON", err)
+		return nil
+	}
+	return []byte(bf.String())
+}
+
+func JSON2Map(b []byte, m map[string]string) error {
+	err := json.Unmarshal(b, &m)
+	if err != nil {
+		PrintError("JSON2Map", err)
 		return err
 	}
 	return nil

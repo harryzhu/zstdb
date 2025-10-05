@@ -12,5 +12,7 @@ func BeforeGrpcStart() error {
 
 	bgrdb = badgerConnect()
 
+	DebugInfo("Max Version", bgrdb.MaxVersion())
+
 	return nil
 }

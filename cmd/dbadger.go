@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	badger "github.com/dgraph-io/badger/v4"
 )
@@ -54,6 +57,7 @@ func badgerSetKV(key, val []byte) []byte {
 			DebugInfo("badgerSetKV", "SKIP as exists")
 			return nil
 		}
+
 		err = txn.Set(key, ZstdBytes(val))
 		PrintError("badgerSetKV", err)
 		return err
@@ -100,9 +104,13 @@ func badgerGet(key []byte) (val []byte) {
 			DebugWarn("badgerGet.20", err, ":", string(key))
 			return nil
 		}
+
 		itemVal, err := item.ValueCopy(nil)
-		PrintError("badgerGet.30", err)
-		//DebugInfo("badgerGet", len(itemVal), " :", string(key))
+		if err != nil {
+			PrintError("badgerGet.30", err)
+			return err
+		}
+
 		val, err = UnZstdBytes(itemVal)
 		if err != nil {
 			return err
@@ -187,4 +195,69 @@ func badgerExists(key []byte) bool {
 	}
 
 	return true
+}
+
+func badgerBackup(fpath string, fsince uint64) error {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func(fpath string, fsince uint64, bgrdb *badger.DB) {
+		defer wg.Done()
+		ft, err := os.Create(fpath)
+		if err != nil {
+			PrintError("Backup", err)
+			return
+		}
+		defer ft.Close()
+
+		n, err := bgrdb.Backup(ft, fsince)
+		if err != nil {
+			PrintError("Backup", err)
+			return
+		}
+		DebugInfo("Backup", n)
+	}(fpath, fsince, bgrdb)
+
+	wg.Wait()
+
+	DebugInfo("badgerBackup", "complete")
+	return nil
+}
+
+func badgerRestore(fpath string) error {
+	DebugInfo("badgerRestore", "from: ", fpath)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func(fpath string, bgrdb *badger.DB) {
+		defer wg.Done()
+		ft, err := os.Open(fpath)
+		if err != nil {
+			PrintError("Restore", err)
+			return
+		}
+		defer ft.Close()
+
+		err = bgrdb.Load(ft, 16)
+		if err != nil {
+			PrintError("Restore", err)
+			return
+		}
+	}(fpath, bgrdb)
+
+	wg.Wait()
+
+	DebugInfo("badgerRestore", "complete")
+	return nil
+}
+
+func BadgerRunValueLogGC() {
+	ticker := time.NewTicker(30 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+	again:
+		DebugInfo("RunValueLogGC", 0.7)
+		err := bgrdb.RunValueLogGC(0.7)
+		if err == nil {
+			goto again
+		}
+	}
 }
