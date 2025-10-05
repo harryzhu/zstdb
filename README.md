@@ -19,11 +19,14 @@
 ./zstdb
 
 # --debug 默认 false ： 是否显示各种调试信息
-# --allow-overwrite 默认 false ： 是否允许覆盖已经存在的值
-# --allow-user-key 默认 false ： 是否允许用户自定义Key。默认不允许，目标是一个文件只存储一次，Key由系统自动生成
-# --max-upload-size-mb 默认 16 ： 值的最大长度，单位 MB
+#
 # --host 默认 false ： rpc 对外提供服务的 IP
 # --port 默认 false ： rpc 对外提供服务的 端口 
+#
+# --max-upload-size-mb 默认 16 ： 值的最大长度，单位 MB
+#
+# --allow-overwrite 默认 false ： 是否允许覆盖已经存在的值
+# --allow-user-key 默认 false ： 是否允许用户自定义Key。默认不允许，目标是一个文件只存储一次，Key由系统自动生成
 #
 # --disable-delete 默认 false ： 禁用删除操作，数据库只允许添加数据，不允许删除数据
 # --disable-set 默认 false ： 禁用写入操作，数据库不允许新添加数据，但可以删除数据
