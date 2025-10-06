@@ -1,7 +1,7 @@
 # zstdb
 
 ## Summary
-一个使用 grpc 进行交互，供其他程序使用的 KV 键值数据库，值采用 zstd 压缩
+一个使用 grpc 进行交互，供其他程序使用的 KV 键值后端存储服务，数据库采用 badger，值采用 zstd 压缩，相同文件仅存储一次，节省空间
 
 ## Prod
 当前产品环境用于存储大量小文件（线上约 30万+ 文件大小约 1MB 的 .mp4 文件），相同文件仅存储一次。
@@ -81,7 +81,7 @@ message ItemReply {
   * `Get`, 读取
   * `Delete`, 删除
   * `Exists`, 检查数据是否存在，返回 0 表示不存在，返回其他数字表示：存在数据的当前版本号
-  * `List`, 按指定前缀获取 Key 清单，分页，每次获取1000个Key。若前缀指定为空字符串，表示获取所有 Key
+  * `List`, 按指定前缀获取 Key 清单，分页，每次获取1000个Key。若前缀指定为空字符串，表示获取所有 ey
   * `Status`, 
     * `stats`, 获取简单统计数据 `max_version`, `key_count`, `lsm_size`, `vlog_size`
     * `backup`, 备份数据库，需要在 Data 字段提供 JSON 格式的 `path` 和 `since`, 值均为字符串。通过 since 的值可以增值备份
