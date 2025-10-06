@@ -24,6 +24,7 @@
 # --port 默认 false ： rpc 对外提供服务的 端口 
 #
 # --max-upload-size-mb 默认 16 ： 值的最大长度，单位 MB
+# --min-free-disk-space-mb 默认4096 ：设置最低磁盘可用空间，低于该值 zstdb 自动停止写入新数据，每10秒检测一次
 #
 # --allow-overwrite 默认 false ： 是否允许覆盖已经存在的值
 # --allow-user-key 默认 false ： 是否允许用户自定义Key。默认不允许，目标是一个文件只存储一次，Key由系统自动生成
@@ -40,28 +41,85 @@
 
 ### 使用举例
 #### Python
+* 安装
+```
+pip install grpcio
+pip install xxhash
+```
+* 写入数据格式 `badgerItem_pb2.Item()`:
+
+```go
+message Item {
+  bytes key = 1;
+  bytes data = 2;
+  uint64 ver64 = 3;
+  uint64 sum64 = 4;
+}
+
+// key: 当zstdb启动时，如果--allow-user-key=true，会用指定的该 key 存入数据，如果--allow-user-key=false，此处设置的key会被忽略
+// data: 需要保存的数据
+// ver64: 写入数据时，该值始终为0，查询返回时，为zstd内该数据的版本号，--allow-overwrite 设置为 true 时，该值会逐步递增，设置为 false 时，该值始终不变。
+// sum64: 完整性校验，传入的数据，必须先在客户端采用 xxhash 得到哈希值，同时传入数据和这个哈希值，服务端接收数据后，会计算数据的 xxhash 值，
+//        如果与客户端传入的 xxhash 值相同，才会认为接收的数据是完整的，才会写入数据库，客户端和服务端的 xxhash 值不相同时，数据不会被写入。
+```
+
+* 保存数据：
+
+
+* 示例：
+
 ```python
+import xxhash
 import grpc
 import badgerItem_pb2
 import badgerItem_pb2_grpc
 
-rpcaddr = '192.168.0.113:8282'
-
 max_msg_size = 32*1024*1024
+
+rpc_addr = '192.168.0.113:8282'
 rpc_opt = (('grpc.max_send_message_length', max_msg_size),('grpc.max_receive_message_length', max_msg_size))
+
+def xxhashbyte(b):
+  if b is None or len(b) == 0:
+    return None
+  return xxhash.xxh64(b).intdigest()
 
 def fset(k,v):
   with grpc.insecure_channel(target=rpc_addr, options=rpc_opt) as channel:
     stub = badgerItem_pb2_grpc.BadgerStub(channel)
-    response = stub.Set(badgerItem_pb2.Item(key=k, data=v))
+    response = stub.Set(badgerItem_pb2.Item(key=k.encode("utf-8"), data=v, sum64=xxhashbyte(v)))
     return response
+
+def fget(k):
+  with grpc.insecure_channel(target=rpc_addr, options=rpc_opt) as channel:
+    stub = badgerItem_pb2_grpc.BadgerStub(channel)
+    response = stub.Get(badgerItem_pb2.Item(key=k.encode("utf-8")))
+    return response
+
 
 if __name__ == '__main__':
   with open("th.webp","rb")as fr:
     fdata = fr.read()
 
-  resp = fset("my-test-key".encode("utf-8"), fdata)
-  print(f'resp: fset: {resp}')
+  resp = fset("my-test-key", fdata)
+  # 3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17
+
+  resp = fget("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17")
+
+  print(f'resp: errcode: {resp.errcode}')
+  print(f'resp: status: {resp.status.decode("utf-8")}')
+  print(f'resp: key: {resp.key.decode("utf-8")}')
+  print(f'resp: data length: {len(resp.data)}')
+  print(f'resp: ver64: {resp.ver64}')
+  print(f'resp: sum64: {resp.sum64}')
+  #
+  # resp: errcode: 0
+  # resp: status: ok
+  # resp: key: 3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17
+  # resp: data length: 244552
+  # resp: ver64: 138701
+  # resp: sum64: 16664423322944650346
+  
   # ./zstdb 启动时，
   # 如果 --allow-user-key 设置为 true，那么 Key 就为 "my-test-key"
   # 如果 --allow-user-key 设置为 false， 那么 Key 就为 系统自动生成，而不是 user 设置的 "my-test-key"
