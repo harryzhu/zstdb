@@ -64,7 +64,7 @@ message Item {
 ```
 
 * 返回数据格式：
-```Protocol Buffer
+```go
 message ItemReply {
   int32 errcode = 1;
   bytes status = 2;
@@ -75,6 +75,14 @@ message ItemReply {
 }
 
 ```
+
+* 支持方法： 
+  ** `Set`, 
+  ** `Get`, 
+  ** `Delete`, 
+  ** `Exists`, 
+  ** `List`, 
+  ** `Status`
 
 * 保存数据：
 
