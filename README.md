@@ -46,7 +46,7 @@
 pip install grpcio
 pip install xxhash
 ```
-* 写入数据格式 `badgerItem_pb2.Item()`:
+* 写入数据格式:
 
 ```go
 message Item {
@@ -56,11 +56,24 @@ message Item {
   uint64 sum64 = 4;
 }
 
-// key: 当zstdb启动时，如果--allow-user-key=true，会用指定的该 key 存入数据，如果--allow-user-key=false，此处设置的key会被忽略
+// key: 当zstdb启动时，如果--allow-user-key=true，会用指定的该 key 存入数据，如果为 false，此处设置的key会被忽略
 // data: 需要保存的数据
 // ver64: 写入数据时，该值始终为0，查询返回时，为zstd内该数据的版本号，--allow-overwrite 设置为 true 时，该值会逐步递增，设置为 false 时，该值始终不变。
 // sum64: 完整性校验，传入的数据，必须先在客户端采用 xxhash 得到哈希值，同时传入数据和这个哈希值，服务端接收数据后，会计算数据的 xxhash 值，
 //        如果与客户端传入的 xxhash 值相同，才会认为接收的数据是完整的，才会写入数据库，客户端和服务端的 xxhash 值不相同时，数据不会被写入。
+```
+
+* 返回数据格式：
+```go
+message ItemReply {
+  int32 errcode = 1;
+  bytes status = 2;
+  bytes key = 3;
+  bytes data = 4;
+  uint64 ver64 = 5;
+  uint64 sum64 = 6;
+}
+
 ```
 
 * 保存数据：
