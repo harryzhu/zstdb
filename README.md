@@ -80,10 +80,10 @@ message ItemReply {
   * `Set`, 写入
   * `Get`, 读取
   * `Delete`, 删除
-  * `Exists`, 检查数据是否存在
+  * `Exists`, 检查数据是否存在，返回 0 表示不存在，返回其他数字表示：存在数据的当前版本号
   * `List`, 获取 Key 清单，分页，每次获取1000个Key
   * `Status`, 
-    * `stats`, 获取
+    * `stats`, 获取简单统计数据 `max_version`, `key_count`, `lsm_size`, `vlog_size`
     * `backup`, 备份数据库，需要在 Data 字段提供 JSON 格式的 `path` 和 `since`, 值均为字符串。通过 since 的值可以增值备份
     * `restore`, 恢复数据库
 
