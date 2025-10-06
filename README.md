@@ -77,12 +77,39 @@ message ItemReply {
 ```
 
 * 支持方法： 
-  * * `Set`, 
-  * * `Get`, 
-  * * `Delete`, 
-  * * `Exists`, 
-  * * `List`, 
-  * * `Status`
+  * `Set`, 写入
+  * `Get`, 读取
+  * `Delete`, 删除
+  * `Exists`, 检查数据是否存在
+  * `List`, 获取 Key 清单，分页，每次获取1000个Key
+  * `Status`, 
+    * `stats`, 获取
+    * `backup`, 备份数据库，需要在 Data 字段提供 JSON 格式的 `path` 和 `since`, 值均为字符串。通过 since 的值可以增值备份
+    * `restore`, 恢复数据库
+
+```python
+
+def fstatus(k,v):
+  with grpc.insecure_channel(target=rpc_addr, options=rpc_opt) as channel:
+    stub = badgerItem_pb2_grpc.BadgerStub(channel)
+    response = stub.Status(badgerItem_pb2.Item(key=k.encode("utf-8"), data=v.encode("utf-8")))
+    return response
+
+# 备份数据库
+m = {"path": "/Users/harry/zstdb/backup/20230101", "since": "0"}
+# 注意： since 的值必须是 "0" (带有引号，即字符串)，不能是 0 （不带引号，即数字），
+# since 的值是数据库内数据的版本号，"0" 表示全量备份，"232434" 表示仅备份版本为 "232434" 之后新增的数据，即增量备份
+# path 为 zstdb 机器的本地路径, 文件名会添加后缀：_[since的值-备份时的最大版本号].zstdb.bak
+mstr = json.dumps(m)
+resp = fstatus("backup",mstr)
+print(f'resp: fstatus: {resp.data.decode("utf-8")}')
+
+# 恢复数据库
+m = {"path": "/Users/harry/zstdb/backup/20230101_[0-132854].zstdb.bak"}
+mstr = json.dumps(m)
+resp = fstatus("restore",mstr)
+print(f'resp: fstatus: {resp.data.decode("utf-8")}')
+```
 
 * 保存数据：
 
