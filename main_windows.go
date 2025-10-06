@@ -1,5 +1,5 @@
-//go:build !windows
-// +build !windows
+//go:build windows
+// +build windows
 
 package main
 
@@ -14,6 +14,12 @@ import (
 	"syscall"
 	"time"
 	"zstdb/cmd"
+
+	"golang.org/x/sys/windows"
+)
+
+const (
+	minFreeSpace uint64 = 2 << 30
 )
 
 func main() {
@@ -100,12 +106,19 @@ func DebugInfo(prefix string, args ...any) {
 }
 
 func DiskFree(path string) uint64 {
-	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(path, &fs)
+	volName := filepath.VolumeName(path)
+	DebugInfo("DiskFree: Drive", volName)
+
+	var freeSpace uint64
+	var totalNumberOfBytes uint64
+	var totalNumberOfFreeBytes uint64
+
+	err := windows.GetDiskFreeSpaceEx(windows.StringToUTF16Ptr(volName),
+		&freeSpace, &totalNumberOfBytes, &totalNumberOfFreeBytes)
+
 	if err != nil {
-		DebugInfo("DiskFree: ERROR", err)
+		DebugInfo("DiskFree: ERROR", err.Error())
 		return 0
 	}
-	freeSpace := fs.Bfree * uint64(fs.Bsize)
 	return freeSpace
 }

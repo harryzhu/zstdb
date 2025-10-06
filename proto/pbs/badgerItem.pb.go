@@ -26,6 +26,8 @@ type Item struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           []byte                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Data          []byte                 `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	Ver64         uint64                 `protobuf:"varint,3,opt,name=ver64,proto3" json:"ver64,omitempty"`
+	Sum64         uint64                 `protobuf:"varint,4,opt,name=sum64,proto3" json:"sum64,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -74,6 +76,20 @@ func (x *Item) GetData() []byte {
 	return nil
 }
 
+func (x *Item) GetVer64() uint64 {
+	if x != nil {
+		return x.Ver64
+	}
+	return 0
+}
+
+func (x *Item) GetSum64() uint64 {
+	if x != nil {
+		return x.Sum64
+	}
+	return 0
+}
+
 // The response message containing the greetings
 type ItemReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -81,6 +97,8 @@ type ItemReply struct {
 	Status        []byte                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	Key           []byte                 `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	Data          []byte                 `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
+	Ver64         uint64                 `protobuf:"varint,5,opt,name=ver64,proto3" json:"ver64,omitempty"`
+	Sum64         uint64                 `protobuf:"varint,6,opt,name=sum64,proto3" json:"sum64,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -141,6 +159,20 @@ func (x *ItemReply) GetData() []byte {
 		return x.Data
 	}
 	return nil
+}
+
+func (x *ItemReply) GetVer64() uint64 {
+	if x != nil {
+		return x.Ver64
+	}
+	return 0
+}
+
+func (x *ItemReply) GetSum64() uint64 {
+	if x != nil {
+		return x.Sum64
+	}
+	return 0
 }
 
 type ListFilter struct {
@@ -243,15 +275,19 @@ var File_badgerItem_proto protoreflect.FileDescriptor
 
 const file_badgerItem_proto_rawDesc = "" +
 	"\n" +
-	"\x10badgerItem.proto\",\n" +
+	"\x10badgerItem.proto\"X\n" +
 	"\x04Item\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\fR\x03key\x12\x12\n" +
-	"\x04data\x18\x02 \x01(\fR\x04data\"c\n" +
+	"\x04data\x18\x02 \x01(\fR\x04data\x12\x14\n" +
+	"\x05ver64\x18\x03 \x01(\x04R\x05ver64\x12\x14\n" +
+	"\x05sum64\x18\x04 \x01(\x04R\x05sum64\"\x8f\x01\n" +
 	"\tItemReply\x12\x18\n" +
 	"\aerrcode\x18\x01 \x01(\x05R\aerrcode\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\fR\x06status\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\fR\x03key\x12\x12\n" +
-	"\x04data\x18\x04 \x01(\fR\x04data\">\n" +
+	"\x04data\x18\x04 \x01(\fR\x04data\x12\x14\n" +
+	"\x05ver64\x18\x05 \x01(\x04R\x05ver64\x12\x14\n" +
+	"\x05sum64\x18\x06 \x01(\x04R\x05sum64\">\n" +
 	"\n" +
 	"ListFilter\x12\x16\n" +
 	"\x06prefix\x18\x01 \x01(\tR\x06prefix\x12\x18\n" +

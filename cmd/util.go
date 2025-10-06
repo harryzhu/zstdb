@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/klauspost/compress/zstd"
 	"github.com/zeebo/blake3"
 )
@@ -62,6 +63,14 @@ func MakeDirs(dpath string) error {
 func ToUnixSlash(s string) string {
 	// for windows
 	return strings.ReplaceAll(s, "\\", "/")
+}
+
+func GetXxhash(b []byte) uint64 {
+	return xxhash.Sum64(b)
+}
+
+func GetXxhashString(b []byte) string {
+	return strconv.FormatUint(xxhash.Sum64(b), 10)
 }
 
 func SumBlake3(b []byte) []byte {

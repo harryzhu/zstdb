@@ -10,14 +10,15 @@ import (
 )
 
 var (
-	IsDebug          bool
-	IsAllowOverWrite bool
-	IsAllowUserKey   bool
-	IsDisableDelete  bool
-	IsDisableSet     bool
-	MaxUploadSizeMB  int64
-	MaxUploadSize    int64
-	DataDir          string
+	IsDebug            bool
+	IsAllowOverWrite   bool
+	IsAllowUserKey     bool
+	IsDisableDelete    bool
+	IsDisableSet       bool
+	MinFreeDiskSpaceMB uint64
+	MaxUploadSizeMB    int64
+	MaxUploadSize      int64
+	DataDir            string
 
 	Host string
 	Port string
@@ -60,4 +61,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&Host, "host", "0.0.0.0", "host, default: 0.0.0.0")
 	rootCmd.PersistentFlags().StringVar(&Port, "port", "8282", "port, default: 8282")
 
+	rootCmd.PersistentFlags().Uint64Var(&MinFreeDiskSpaceMB, "min-free-disk-space-mb", 4096,
+		"disable-set=true if free space is less than this value, minimum: 4096")
 }

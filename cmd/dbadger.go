@@ -92,10 +92,10 @@ func badgerSetV(val []byte) (key []byte) {
 	return key
 }
 
-func badgerGet(key []byte) (val []byte) {
+func badgerGet(key []byte) (val []byte, ver uint64) {
 	if key == nil {
 		DebugWarn("badgerGet.10", "key cannot be empty")
-		return nil
+		return nil, 0
 	}
 
 	bgrdb.View(func(txn *badger.Txn) error {
@@ -111,6 +111,8 @@ func badgerGet(key []byte) (val []byte) {
 			return err
 		}
 
+		ver = item.Version()
+
 		val, err = UnZstdBytes(itemVal)
 		if err != nil {
 			return err
@@ -118,7 +120,7 @@ func badgerGet(key []byte) (val []byte) {
 		return err
 	})
 
-	return val
+	return val, ver
 }
 
 func badgerDelete(key []byte) error {
@@ -177,24 +179,25 @@ func badgerList(prefix string, pageNum int) []string {
 	return pageKeys
 }
 
-func badgerExists(key []byte) bool {
+func badgerExists(key []byte) uint64 {
 	if key == nil {
 		DebugWarn("badgerExists", "key cannot be empty")
-		return false
+		return 0
 	}
-
+	var verNum uint64
 	err := bgrdb.View(func(txn *badger.Txn) error {
-		_, err := txn.Get(key)
+		it, err := txn.Get(key)
 		if err != nil {
 			return err
 		}
+		verNum = it.Version()
 		return nil
 	})
 	if err != nil {
-		return false
+		return 0
 	}
 
-	return true
+	return verNum
 }
 
 func badgerBackup(fpath string, fsince uint64) error {

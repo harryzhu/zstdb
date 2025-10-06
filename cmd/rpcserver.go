@@ -24,14 +24,18 @@ func (s *server) Get(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Status:  nil,
 		Key:     in.Key,
 		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
 	}
 	if in.Key != nil {
-		v := badgerGet(in.Key)
-		if v != nil {
+		val, ver := badgerGet(in.Key)
+		if val != nil {
 			resp.Errcode = 0
 			resp.Status = []byte("ok")
 			resp.Key = in.Key
-			resp.Data = v
+			resp.Data = val
+			resp.Ver64 = ver
+			resp.Sum64 = GetXxhash(val)
 		} else {
 			resp.Errcode = 500
 			resp.Status = []byte("cannot get from bgrdb")
@@ -47,6 +51,8 @@ func (s *server) Set(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Status:  nil,
 		Key:     in.Key,
 		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
 	}
 	if IsDisableSet == true {
 		resp.Errcode = 501
@@ -57,6 +63,13 @@ func (s *server) Set(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 	}
 
 	if in.Data != nil {
+		sum64 := GetXxhash(in.Data)
+		if in.Sum64 != sum64 {
+			resp.Errcode = 501
+			resp.Status = []byte("data sum64 does not match")
+			return resp, nil
+		}
+
 		k := badgerSave(in.Key, in.Data)
 		if k != nil {
 			resp.Key = k
@@ -77,6 +90,8 @@ func (s *server) Delete(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Status:  nil,
 		Key:     in.Key,
 		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
 	}
 
 	if IsDisableDelete == true {
@@ -107,14 +122,20 @@ func (s *server) Exists(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Status:  nil,
 		Key:     in.Key,
 		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
 	}
 	if in.Key != nil {
-		exist := badgerExists(in.Key)
-		resp.Status = []byte("ok")
-		if exist == false {
-			resp.Data = []byte("0")
+		verNum := badgerExists(in.Key)
+
+		if verNum == 0 {
+			resp.Errcode = 404
+			resp.Status = []byte("Not Found")
+			resp.Ver64 = 0
 		} else {
-			resp.Data = []byte("1")
+			resp.Errcode = 0
+			resp.Status = []byte("ok")
+			resp.Ver64 = verNum
 		}
 
 	}
@@ -138,6 +159,8 @@ func (s *server) Status(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Status:  nil,
 		Key:     in.Key,
 		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
 	}
 	if in.Key != nil {
 		inKey := strings.ToLower(string(in.Key))
@@ -231,10 +254,13 @@ func StartGrpcServer() {
 		grpc.MaxSendMsgSize(4096 * 1024 * 1024),
 	}
 
+	primaryIP := GetPrimaryIP()
+
 	rpcServer = grpc.NewServer(opts...)
 	pb.RegisterBadgerServer(rpcServer, &server{})
-	DebugInfo("StartGrpcServer", "Local IP: ", GetPrimaryIP())
 	DebugInfo("StartGrpcServer", "GRPC ADDRESS: ", addr)
+	DebugInfo("StartGrpcServer", "GRPC(remote): ", primaryIP, ":", Port)
+	DebugInfo("StartGrpcServer", "GRPC(local): ", "127.0.0.1:", Port)
 	if err := rpcServer.Serve(lis); err != nil {
 		FatalError("StartGrpcServer", err)
 	}
