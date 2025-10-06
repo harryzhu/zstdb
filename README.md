@@ -64,7 +64,7 @@ message Item {
 ```
 
 * 返回数据格式：
-```proto3
+```Protocol Buffer
 message ItemReply {
   int32 errcode = 1;
   bytes status = 2;
