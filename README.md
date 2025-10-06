@@ -77,12 +77,12 @@ message ItemReply {
 ```
 
 * 支持方法： 
-  ** `Set`, 
-  ** `Get`, 
-  ** `Delete`, 
-  ** `Exists`, 
-  ** `List`, 
-  ** `Status`
+  * * `Set`, 
+  * * `Get`, 
+  * * `Delete`, 
+  * * `Exists`, 
+  * * `List`, 
+  * * `Status`
 
 * 保存数据：
 
