@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	badger "github.com/dgraph-io/badger/v4"
+	badgeroptions "github.com/dgraph-io/badger/v4/options"
 )
 
 var (
@@ -19,12 +21,20 @@ func badgerConnect() *badger.DB {
 	datadir := ToUnixSlash(filepath.Join(DataDir, "fbin"))
 	MakeDirs(datadir)
 	DebugInfo("badgerConnect", datadir)
+	numCompactors := runtime.NumCPU()
+	if numCompactors < 4 {
+		numCompactors = 4
+	}
+	if numCompactors > 16 {
+		numCompactors = 16
+	}
 	opts := badger.DefaultOptions(datadir)
 	opts.Dir = datadir
 	opts.ValueDir = datadir
 	opts.BaseTableSize = 256 << 20
 	opts.NumVersionsToKeep = 1
-	opts.NumCompactors = 8
+	opts.NumCompactors = numCompactors
+	opts.Compression = badgeroptions.ZSTD
 	opts.ValueLogFileSize = 2<<30 - 64<<20
 	opts.SyncWrites = false
 	opts.ValueThreshold = 512
