@@ -118,6 +118,9 @@ message ItemReply {
     * `stats`, 获取简单统计数据 `max_version`, `key_count`, `lsm_size`, `vlog_size`
     * `backup`, 备份数据库，需要在 Data 字段提供 JSON 格式的 `path` 和 `since`, 值均为字符串。通过 since 的值可以增值备份
     * `restore`, 恢复数据库
+    * `stop`, 安全停止 `zstd`，用于重启 `zstd` 服务
+    * `sync`, 手动确保将缓存写入磁盘
+    * `gc`, 手动运行一次 RunValueLogGC
 
 ```python
 
