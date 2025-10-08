@@ -18,10 +18,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const (
-	minFreeSpace uint64 = 2 << 30
-)
-
 func main() {
 	wg := sync.WaitGroup{}
 	wg.Add(4)
@@ -31,6 +27,10 @@ func main() {
 
 	go func() {
 		cmd.BadgerRunValueLogGC()
+	}()
+
+	go func() {
+		cmd.StartCron()
 	}()
 
 	go func() {
@@ -67,8 +67,6 @@ func WatchDiskFreeSpace() error {
 
 	var minFreeSpace uint64 = cmdMinFreeDiskSpaceMB << 20
 
-	DebugInfo("ATTENTION", "If Free-Disk-Space < ", cmdMinFreeDiskSpaceMB, "MB, zstdb will disable [SET] action")
-
 	freeSpace := uint64(0)
 	absDataDir, err := filepath.Abs(cmd.DataDir)
 	if err != nil {
@@ -77,7 +75,6 @@ func WatchDiskFreeSpace() error {
 	}
 	absDataDir = filepath.ToSlash(absDataDir)
 	if absDataDir != "" {
-		DebugInfo("Current DataDir", absDataDir)
 		freeSpace = DiskFree(absDataDir)
 		DebugInfo("Current freespace(MB)", (freeSpace >> 20), ", (≈", (freeSpace >> 30), "GB)")
 		DebugInfo("Current threshold(MB)", (minFreeSpace >> 20))

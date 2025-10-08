@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -213,5 +214,80 @@ func JSON2Map(b []byte, m map[string]string) error {
 		PrintError("JSON2Map", err)
 		return err
 	}
+	return nil
+}
+
+func WriteFile(fpath string, fcontent []byte) error {
+	fp, err := os.Create(fpath)
+	if err != nil {
+		PrintError("WriteFile", err)
+		return err
+	}
+	defer fp.Close()
+	err = os.WriteFile(fpath, fcontent, os.ModePerm)
+	if err != nil {
+		PrintError("WriteFile", err)
+		return err
+	}
+	return nil
+}
+
+func ReadFile(fpath string) []byte {
+	fp, err := os.Open(fpath)
+	if err != nil {
+		PrintError("ReadFile", err)
+		return nil
+	}
+	defer fp.Close()
+	fcontent, err := os.ReadFile(fpath)
+	if err != nil {
+		PrintError("ReadFile", err)
+		return nil
+	}
+	return fcontent
+}
+
+func SaveCurrentPID() {
+	pidFile = filepath.ToSlash(filepath.Join(DataDir, "pid"))
+	ppid := os.Getpid()
+	if ppid > 0 {
+		WriteFile(pidFile, []byte(Int2Str(ppid)))
+	}
+}
+
+func SaveCurrentAddr() {
+	rpcFile = filepath.ToSlash(filepath.Join(DataDir, "rpc"))
+	addr := fmt.Sprintf("%v:%v", Host, Port)
+	if len(addr) > 1 {
+		WriteFile(rpcFile, []byte(addr))
+	}
+}
+
+func AutoBackup() error {
+	curFile := filepath.ToSlash(filepath.Join(AutoBackupDir, "ver"))
+	lastVersion := uint64(0)
+
+	t := ReadFile(curFile)
+	if t != nil {
+		lastVersion = Str2Uint64(string(t))
+	}
+
+	maxVersion := bgrdb.MaxVersion()
+	if lastVersion > 0 && lastVersion == maxVersion {
+		DebugInfo("AutoBackup", "SKIP backup, no update, Ver:", lastVersion)
+		return nil
+	}
+
+	if lastVersion < 0 {
+		lastVersion = 0
+	}
+
+	bName := strings.Join([]string{"backup_", time.Now().Format("2006-01-02")}, "")
+	backFile := filepath.ToSlash(filepath.Join(AutoBackupDir, bName))
+
+	DebugInfo("AutoBackup", "start autobackup", backFile)
+
+	badgerBackup(backFile, lastVersion)
+
 	return nil
 }

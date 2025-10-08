@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,8 +24,10 @@ func badgerConnect() *badger.DB {
 	opts.ValueDir = datadir
 	opts.BaseTableSize = 256 << 20
 	opts.NumVersionsToKeep = 1
+	opts.NumCompactors = 8
+	opts.ValueLogFileSize = 2<<30 - 64<<20
 	opts.SyncWrites = false
-	opts.ValueThreshold = 16
+	opts.ValueThreshold = 512
 	opts.CompactL0OnClose = true
 
 	db, err := badger.Open(opts)
@@ -179,6 +182,24 @@ func badgerList(prefix string, pageNum int) []string {
 	return pageKeys
 }
 
+func badgerCount(prefix string) uint64 {
+	counter := uint64(0)
+	bgrdb.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 1000
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		prefixByte := []byte(prefix)
+		for it.Seek(prefixByte); it.ValidForPrefix(prefixByte); it.Next() {
+			counter++
+		}
+		return nil
+	})
+
+	return counter
+}
+
 func badgerExists(key []byte) uint64 {
 	if key == nil {
 		DebugWarn("badgerExists", "key cannot be empty")
@@ -200,27 +221,51 @@ func badgerExists(key []byte) uint64 {
 	return verNum
 }
 
+func badgerSync() error {
+	err := bgrdb.Sync()
+	PrintError("badgerSync", err)
+	return err
+}
+
 func badgerBackup(fpath string, fsince uint64) error {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func(fpath string, fsince uint64, bgrdb *badger.DB) {
 		defer wg.Done()
-		ft, err := os.Create(fpath)
+		fpathTemp := strings.Join([]string{fpath, "ing"}, ".")
+		ft, err := os.Create(fpathTemp)
 		if err != nil {
 			PrintError("Backup", err)
 			return
 		}
 		defer ft.Close()
 
-		n, err := bgrdb.Backup(ft, fsince)
+		lastVersion, err := bgrdb.Backup(ft, fsince)
 		if err != nil {
 			PrintError("Backup", err)
 			return
 		}
-		DebugInfo("Backup", n)
+		ft.Close()
+
+		lastVersionFile := ToUnixSlash(filepath.Join(filepath.Dir(fpath), "ver"))
+		DebugInfo("Backup", lastVersion)
+		err = WriteFile(lastVersionFile, []byte(Uint64ToString(lastVersion)))
+		if err != nil {
+			DebugWarn("Backup", err)
+			return
+		}
+		ftarget := strings.Join([]string{fpath, fmt.Sprintf("_[%v_%v]", fsince, lastVersion), ".zstdb.bak"}, "")
+		err = os.Rename(fpathTemp, ftarget)
+		PrintError("Backup", err)
+
 	}(fpath, fsince, bgrdb)
 
 	wg.Wait()
+
+	_, err := os.Stat(fpath)
+	if err != nil {
+		return NewError("backup failed")
+	}
 
 	DebugInfo("badgerBackup", "complete")
 	return nil
@@ -253,13 +298,14 @@ func badgerRestore(fpath string) error {
 }
 
 func BadgerRunValueLogGC() {
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
 	again:
-		DebugInfo("RunValueLogGC", 0.7)
-		err := bgrdb.RunValueLogGC(0.7)
+		DebugInfo("RunValueLogGC", 0.5)
+		err := bgrdb.RunValueLogGC(0.5)
 		if err == nil {
+			time.Sleep(3 * time.Second)
 			goto again
 		}
 	}

@@ -20,8 +20,8 @@
 
 # --debug 默认 false ： 是否显示各种调试信息
 #
-# --host 默认 false ： rpc 对外提供服务的 IP
-# --port 默认 false ： rpc 对外提供服务的 端口 
+# --host 默认 0.0.0.0 ： rpc 对外提供服务的 IP
+# --port 默认 8282 ： rpc 对外提供服务的 端口 
 #
 # --max-upload-size-mb 默认 16 ： 值的最大长度，单位 MB
 # --min-free-disk-space-mb 默认4096 ：设置最低磁盘可用空间，低于该值 zstdb 自动停止写入新数据，每10秒检测一次
@@ -31,6 +31,38 @@
 #
 # --disable-delete 默认 false ： 禁用删除操作，数据库只允许添加数据，不允许删除数据
 # --disable-set 默认 false ： 禁用写入操作，数据库不允许新添加数据，但可以删除数据
+#
+# --alt-data-dir 默认为空：zstdb启动时通过环境变量 zstdb_data 确定存储路径，
+#                如果没有设置环境变量 zstdb_data，数据将存储在当前目录 data/zstdfs，
+#                当使用环境变量时，一台机器运行一个实例（适合大多数场景）。
+#                但如果需要在一台机器运行多个实例，可以用 --alt-data-dir= 指定每个实例的数据存储位置。
+#
+# --admin-password 默认为123: rpc的 Admin 命令需要提供密码认证才能访问。rpc client 中通过 Sum64 字段传入，需要采取 xxhash 值，不能明码传入
+# --auto-backup-dir 默认为空： 如果设置了自动备份目录 和 自动备份周期， 那么数据库会自动按指定周期自动备份（增量备份）
+# --auto-backup-every="@every 1h" 默认为 "@every 1h" 每小时自动备份一次，可以按需修改，注意值必须用引号（因为含有空格），
+#                    ="@every 15m" 表示每15分钟自动备份一次，
+#                    ="@every 1h30m" 表示每1小时30分钟自动备份一次，
+#
+#
+# 运行参数举例：
+
+./zstdb --host=192.168.0.100 --port=8282 --max-upload-size-mb=8 --min-free-disk-space-mb=10240 --admin-password=9527 --auto-backup-dir=/Users/harry/data/backup --auto-backup-every="@every 1h"
+#
+# 表示：
+# zstdb 启动时，数据库位置在（读取环境变量 zstdb_data 的值），
+# 对外提供服务的地址IP为192.168.0.100，端口为 8282
+# 允许保存的最大数据为 8MB，超过该大小的数据不会被保存
+# 自动定期检查磁盘剩余可用空间， 如果低于10GB，则停止写入，不影响已有数据的读取服务，但不再写入新的数据了；
+# 对于rpc 服务中的 Admin 方法（stop、status、gc、backup、restore）必须要提供密码 9527 才能访问，
+# 会每1个小时自动增量备份一次数据到 /Users/harry/data/backup 目录下
+#
+#
+./zstdb --alt-data-dir=/Users/harry/data/8282
+./zstdb --alt-data-dir=/Users/harry/data/8383 --port=8383
+./zstdb --alt-data-dir=/Users/harry/data/8484 --port=8484
+# 在一台机器上面启动3个实例，数据各自独立存储
+#
+#
 
 ./zstdb >/dev/null 2>&1 &
 # 后台运行

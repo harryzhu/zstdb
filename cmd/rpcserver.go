@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	pb "zstdb/pbs"
 
@@ -147,13 +149,13 @@ func (s *server) List(_ context.Context, in *pb.ListFilter) (*pb.ListFilterReply
 	resp := &pb.ListFilterReply{}
 	prefix := in.Prefix
 	pagenum := int(in.Pagenum)
-
+	badgerSync()
 	resp.Keys = badgerList(prefix, pagenum)
 
 	return resp, nil
 }
 
-func (s *server) Status(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
+func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 	resp := &pb.ItemReply{
 		Errcode: 0,
 		Status:  nil,
@@ -162,24 +164,66 @@ func (s *server) Status(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Ver64:   0,
 		Sum64:   0,
 	}
+
+	if in.Sum64 != GetXxhash([]byte(AdminPassword)) {
+		resp.Errcode = 403
+		resp.Status = []byte("incorrect  password")
+		return resp, nil
+	}
+
+	badgerSync()
+
 	if in.Key != nil {
 		inKey := strings.ToLower(string(in.Key))
+		resp.Key = []byte(inKey)
 
-		if inKey == "stats" {
-			resp.Key = []byte("stats")
+		if inKey == "stop" {
+			resp.Status = []byte("ok")
+			go func() {
+				time.Sleep(2 * time.Second)
+				StopGrpcServer()
+				time.Sleep(2 * time.Second)
+				os.Exit(0)
+			}()
 
-			var keyCount uint32 = 0
-			tinfo := bgrdb.Tables()
+			return resp, nil
+		}
 
-			stats := make(map[string]string)
-			for _, info := range tinfo {
-				keyCount += info.KeyCount
+		if inKey == "gc" {
+			resp.Status = []byte("ok")
+			err := bgrdb.RunValueLogGC(0.5)
+			if err != nil {
+				resp.Status = []byte(err.Error())
 			}
+
+			return resp, nil
+		}
+
+		if inKey == "sync" {
+			resp.Status = []byte("ok")
+			err := badgerSync()
+			if err != nil {
+				resp.Status = []byte(err.Error())
+			}
+
+			return resp, nil
+		}
+
+		if inKey == "status" {
+			var keyCount uint64 = 0
+			stats := make(map[string]string)
+
+			t1 := GetNowUnixMillo()
+			keyCount = badgerCount("")
+			tElapse := GetNowUnixMillo() - t1
+
 			lsm_size, vlog_size := bgrdb.Size()
 			stats["max_version"] = Uint64ToString(bgrdb.MaxVersion())
-			stats["key_count"] = Uint32ToString(keyCount)
+			//stats["key_count"] = Uint32ToString(keyCount)
+			stats["key_count"] = Uint64ToString(keyCount)
 			stats["lsm_size"] = Int64ToString(lsm_size)
 			stats["vlog_size"] = Int64ToString(vlog_size)
+			stats["elapse_ms"] = Int64ToString(tElapse)
 
 			resp.Data = Map2JSON(stats)
 		}
@@ -267,10 +311,24 @@ func StartGrpcServer() {
 }
 
 func StopGrpcServer() {
+	DebugInfo("StopGrpcServer", "Stopping ...")
+	ScheduleTask.Stop()
 	rpcServer.GracefulStop()
 	bgrdb.Sync()
 	bgrdb.Close()
 
-	DebugInfo("StopGrpcServer", "stopping")
+	if pidFile != "" {
+		_, err := os.Stat(pidFile)
+		if err == nil {
+			os.Remove(pidFile)
+		}
+	}
 
+	if rpcFile != "" {
+		_, err := os.Stat(rpcFile)
+		if err == nil {
+			os.Remove(rpcFile)
+		}
+	}
+	DebugInfo("StopGrpcServer", "Done")
 }

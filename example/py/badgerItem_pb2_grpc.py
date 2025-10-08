@@ -54,8 +54,8 @@ class BadgerStub(object):
                 request_serializer=badgerItem__pb2.Item.SerializeToString,
                 response_deserializer=badgerItem__pb2.ItemReply.FromString,
                 _registered_method=True)
-        self.Status = channel.unary_unary(
-                '/Badger/Status',
+        self.Admin = channel.unary_unary(
+                '/Badger/Admin',
                 request_serializer=badgerItem__pb2.Item.SerializeToString,
                 response_deserializer=badgerItem__pb2.ItemReply.FromString,
                 _registered_method=True)
@@ -93,7 +93,7 @@ class BadgerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def Status(self, request, context):
+    def Admin(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -128,8 +128,8 @@ def add_BadgerServicer_to_server(servicer, server):
                     request_deserializer=badgerItem__pb2.Item.FromString,
                     response_serializer=badgerItem__pb2.ItemReply.SerializeToString,
             ),
-            'Status': grpc.unary_unary_rpc_method_handler(
-                    servicer.Status,
+            'Admin': grpc.unary_unary_rpc_method_handler(
+                    servicer.Admin,
                     request_deserializer=badgerItem__pb2.Item.FromString,
                     response_serializer=badgerItem__pb2.ItemReply.SerializeToString,
             ),
@@ -258,7 +258,7 @@ class Badger(object):
             _registered_method=True)
 
     @staticmethod
-    def Status(request,
+    def Admin(request,
             target,
             options=(),
             channel_credentials=None,
@@ -271,7 +271,7 @@ class Badger(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/Badger/Status',
+            '/Badger/Admin',
             badgerItem__pb2.Item.SerializeToString,
             badgerItem__pb2.ItemReply.FromString,
             options,
