@@ -291,3 +291,16 @@ func AutoBackup() error {
 
 	return nil
 }
+
+func RemoveFile(fpath string) error {
+	_, err := os.Stat(fpath)
+	if err != nil {
+		return nil
+	}
+	err = os.Remove(fpath)
+	if err != nil {
+		PrintError("RemoveFile", err)
+		return err
+	}
+	return nil
+}

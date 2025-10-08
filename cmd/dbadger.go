@@ -37,7 +37,7 @@ func badgerConnect() *badger.DB {
 	opts.Compression = badgeroptions.ZSTD
 	opts.ValueLogFileSize = 2<<30 - 64<<20
 	opts.SyncWrites = false
-	opts.ValueThreshold = 512
+	opts.ValueThreshold = 32
 	opts.CompactL0OnClose = true
 
 	db, err := badger.Open(opts)
@@ -238,9 +238,12 @@ func badgerSync() error {
 }
 
 func badgerBackup(fpath string, fsince uint64) error {
+	doneFile := strings.Join([]string{fpath, "backup", "done"}, ".")
+	RemoveFile(doneFile)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go func(fpath string, fsince uint64, bgrdb *badger.DB) {
+
+	go func(fpath string, fsince uint64, bgrdb *badger.DB, doneFile string) {
 		defer wg.Done()
 		fpathTemp := strings.Join([]string{fpath, "ing"}, ".")
 		ft, err := os.Create(fpathTemp)
@@ -266,14 +269,24 @@ func badgerBackup(fpath string, fsince uint64) error {
 		}
 		ftarget := strings.Join([]string{fpath, fmt.Sprintf("_[%v_%v]", fsince, lastVersion), ".zstdb.bak"}, "")
 		err = os.Rename(fpathTemp, ftarget)
-		PrintError("Backup", err)
 
-	}(fpath, fsince, bgrdb)
+		if err != nil {
+			PrintError("Backup", err)
+			return
+		}
+
+		WriteFile(doneFile, []byte(ftarget))
+
+	}(fpath, fsince, bgrdb, doneFile)
 
 	wg.Wait()
 
-	_, err := os.Stat(fpath)
+	df, err := os.Stat(doneFile)
 	if err != nil {
+		return NewError("backup failed")
+	}
+
+	if time.Since(df.ModTime()).Seconds() > 3 {
 		return NewError("backup failed")
 	}
 
@@ -283,13 +296,16 @@ func badgerBackup(fpath string, fsince uint64) error {
 
 func badgerRestore(fpath string) error {
 	DebugInfo("badgerRestore", "from: ", fpath)
+	errorFile := strings.Join([]string{fpath, "restore", "error"}, ".")
+	RemoveFile(errorFile)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go func(fpath string, bgrdb *badger.DB) {
+	go func(fpath string, bgrdb *badger.DB, errorFile string) {
 		defer wg.Done()
 		ft, err := os.Open(fpath)
 		if err != nil {
 			PrintError("Restore", err)
+			WriteFile(errorFile, []byte(err.Error()))
 			return
 		}
 		defer ft.Close()
@@ -297,13 +313,25 @@ func badgerRestore(fpath string) error {
 		err = bgrdb.Load(ft, 16)
 		if err != nil {
 			PrintError("Restore", err)
+			WriteFile(errorFile, []byte(err.Error()))
 			return
 		}
-	}(fpath, bgrdb)
+
+	}(fpath, bgrdb, errorFile)
 
 	wg.Wait()
 
-	DebugInfo("badgerRestore", "complete")
+	_, err := os.Stat(errorFile)
+	if err != nil {
+		DebugInfo("badgerRestore", "complete")
+		return nil
+	}
+
+	errContent := ReadFile(errorFile)
+	if errContent != nil {
+		return NewError(string(errContent))
+	}
+
 	return nil
 }
 

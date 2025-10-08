@@ -33,7 +33,6 @@ func (s *server) Get(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		val, ver := badgerGet(in.Key)
 		if val != nil {
 			resp.Errcode = 0
-			resp.Status = []byte("ok")
 			resp.Key = in.Key
 			resp.Data = val
 			resp.Ver64 = ver
@@ -75,7 +74,6 @@ func (s *server) Set(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		k := badgerSave(in.Key, in.Data)
 		if k != nil {
 			resp.Key = k
-			resp.Status = []byte("ok")
 		} else {
 			resp.Errcode = 500
 			resp.Status = []byte("cannot save into bgrdb")
@@ -110,8 +108,6 @@ func (s *server) Delete(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 			resp.Status = []byte(err.Error())
 			resp.Key = nil
 			resp.Data = nil
-		} else {
-			resp.Status = []byte("ok")
 		}
 
 	}
@@ -136,7 +132,6 @@ func (s *server) Exists(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 			resp.Ver64 = 0
 		} else {
 			resp.Errcode = 0
-			resp.Status = []byte("ok")
 			resp.Ver64 = verNum
 		}
 
@@ -178,7 +173,6 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		resp.Key = []byte(inKey)
 
 		if inKey == "stop" {
-			resp.Status = []byte("ok")
 			go func() {
 				time.Sleep(2 * time.Second)
 				StopGrpcServer()
@@ -190,7 +184,6 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		}
 
 		if inKey == "gc" {
-			resp.Status = []byte("ok")
 			err := bgrdb.RunValueLogGC(0.5)
 			if err != nil {
 				resp.Status = []byte(err.Error())
@@ -200,7 +193,6 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		}
 
 		if inKey == "sync" {
-			resp.Status = []byte("ok")
 			err := badgerSync()
 			if err != nil {
 				resp.Status = []byte(err.Error())
@@ -219,7 +211,6 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 
 			lsm_size, vlog_size := bgrdb.Size()
 			stats["max_version"] = Uint64ToString(bgrdb.MaxVersion())
-			//stats["key_count"] = Uint32ToString(keyCount)
 			stats["key_count"] = Uint64ToString(keyCount)
 			stats["lsm_size"] = Int64ToString(lsm_size)
 			stats["vlog_size"] = Int64ToString(vlog_size)
@@ -257,9 +248,7 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 				return resp, nil
 			}
 
-			maxVer := bgrdb.MaxVersion()
 			fdir := filepath.Dir(fpath)
-			fname := strings.Join([]string{filepath.Base(fpath), "_", fmt.Sprintf("[%v-%v]", fsince, maxVer), ".zstdb.bak"}, "")
 			err = MakeDirs(fdir)
 			if err != nil {
 				resp.Errcode = 500
@@ -267,15 +256,30 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 				return resp, nil
 			}
 
-			ftarget := filepath.Join(fdir, fname)
-
 			if inKey == "backup" {
-				badgerBackup(ftarget, fsince)
-				m["target"] = ftarget
+				err := badgerBackup(fpath, fsince)
+				if err == nil {
+					doneFile := strings.Join([]string{fpath, "backup.done"}, ".")
+					doneContent := ReadFile(doneFile)
+					if doneContent != nil {
+						m["target"] = string(doneContent)
+					}
+				} else {
+					resp.Errcode = 500
+					resp.Status = []byte(err.Error())
+					m["target"] = ""
+				}
 			}
 
 			if inKey == "restore" {
-				badgerRestore(fpath)
+				err := badgerRestore(fpath)
+				if err != nil {
+					resp.Errcode = 500
+					resp.Status = []byte(err.Error())
+					m["target"] = "failed"
+				} else {
+					m["target"] = "ok"
+				}
 			}
 
 			DebugInfo(inKey, "complete")

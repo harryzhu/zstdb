@@ -76,8 +76,8 @@ func WatchDiskFreeSpace() error {
 	absDataDir = filepath.ToSlash(absDataDir)
 	if absDataDir != "" {
 		freeSpace = DiskFree(absDataDir)
-		DebugInfo("Current freespace(MB)", (freeSpace >> 20), ", (≈", (freeSpace >> 30), "GB)")
-		DebugInfo("Current threshold(MB)", (minFreeSpace >> 20))
+		//DebugInfo("Current freespace(MB)", (freeSpace >> 20), ", (≈", (freeSpace >> 30), "GB)")
+		//DebugInfo("Current threshold(MB)", (minFreeSpace >> 20))
 	}
 
 	if freeSpace > 0 && freeSpace < minFreeSpace {
@@ -104,7 +104,7 @@ func DebugInfo(prefix string, args ...any) {
 
 func DiskFree(path string) uint64 {
 	volName := filepath.VolumeName(path)
-	DebugInfo("DiskFree: Drive", volName)
+	//DebugInfo("DiskFree: Drive", volName)
 
 	var freeSpace uint64
 	var totalNumberOfBytes uint64

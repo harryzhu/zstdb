@@ -19,7 +19,7 @@ func StartCron() {
 			PrintError("StartCron,--auto-backup-every= invalid, will use default", err)
 			AutoBackupEvery = "@every 1h"
 		}
-		DebugInfo("StartCron: --auto-backup-every is using", AutoBackupEvery)
+		DebugInfo("StartCron: --auto-backup-every is using", AutoBackupEvery, ", --auto-backup-dir=", AutoBackupDir)
 	}
 
 	ScheduleTask.AddFunc(AutoBackupEvery, func() {
