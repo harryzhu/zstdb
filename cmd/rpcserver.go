@@ -114,6 +114,23 @@ func (s *server) Delete(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 	return resp, nil
 }
 
+func (s *server) Count(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
+	resp := &pb.ItemReply{
+		Errcode: 0,
+		Status:  nil,
+		Key:     in.Key,
+		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
+	}
+
+	if in.Key != nil {
+		numPrefix := badgerCount(string(in.Key))
+		resp.Data = []byte(Uint64ToString(numPrefix))
+	}
+	return resp, nil
+}
+
 func (s *server) Exists(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 	resp := &pb.ItemReply{
 		Errcode: 0,
@@ -318,21 +335,23 @@ func StopGrpcServer() {
 	DebugInfo("StopGrpcServer", "Stopping ...")
 	ScheduleTask.Stop()
 	rpcServer.GracefulStop()
-	bgrdb.Sync()
+	badgerSync()
 	bgrdb.Close()
 
 	if pidFile != "" {
 		_, err := os.Stat(pidFile)
 		if err == nil {
-			os.Remove(pidFile)
+			RemoveFile(pidFile)
 		}
 	}
 
 	if rpcFile != "" {
 		_, err := os.Stat(rpcFile)
 		if err == nil {
-			os.Remove(rpcFile)
+			RemoveFile(rpcFile)
 		}
 	}
+
+	StopFileLogging()
 	DebugInfo("StopGrpcServer", "Done")
 }

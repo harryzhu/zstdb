@@ -23,6 +23,7 @@ const (
 	Badger_Set_FullMethodName    = "/Badger/Set"
 	Badger_Delete_FullMethodName = "/Badger/Delete"
 	Badger_Exists_FullMethodName = "/Badger/Exists"
+	Badger_Count_FullMethodName  = "/Badger/Count"
 	Badger_Admin_FullMethodName  = "/Badger/Admin"
 	Badger_List_FullMethodName   = "/Badger/List"
 )
@@ -35,6 +36,7 @@ type BadgerClient interface {
 	Set(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	Delete(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	Exists(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
+	Count(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	Admin(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	List(ctx context.Context, in *ListFilter, opts ...grpc.CallOption) (*ListFilterReply, error)
 }
@@ -87,6 +89,16 @@ func (c *badgerClient) Exists(ctx context.Context, in *Item, opts ...grpc.CallOp
 	return out, nil
 }
 
+func (c *badgerClient) Count(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ItemReply)
+	err := c.cc.Invoke(ctx, Badger_Count_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *badgerClient) Admin(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ItemReply)
@@ -115,6 +127,7 @@ type BadgerServer interface {
 	Set(context.Context, *Item) (*ItemReply, error)
 	Delete(context.Context, *Item) (*ItemReply, error)
 	Exists(context.Context, *Item) (*ItemReply, error)
+	Count(context.Context, *Item) (*ItemReply, error)
 	Admin(context.Context, *Item) (*ItemReply, error)
 	List(context.Context, *ListFilter) (*ListFilterReply, error)
 	mustEmbedUnimplementedBadgerServer()
@@ -138,6 +151,9 @@ func (UnimplementedBadgerServer) Delete(context.Context, *Item) (*ItemReply, err
 }
 func (UnimplementedBadgerServer) Exists(context.Context, *Item) (*ItemReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Exists not implemented")
+}
+func (UnimplementedBadgerServer) Count(context.Context, *Item) (*ItemReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Count not implemented")
 }
 func (UnimplementedBadgerServer) Admin(context.Context, *Item) (*ItemReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Admin not implemented")
@@ -238,6 +254,24 @@ func _Badger_Exists_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Badger_Count_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Item)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BadgerServer).Count(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Badger_Count_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BadgerServer).Count(ctx, req.(*Item))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Badger_Admin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Item)
 	if err := dec(in); err != nil {
@@ -296,6 +330,10 @@ var Badger_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Exists",
 			Handler:    _Badger_Exists_Handler,
+		},
+		{
+			MethodName: "Count",
+			Handler:    _Badger_Count_Handler,
 		},
 		{
 			MethodName: "Admin",

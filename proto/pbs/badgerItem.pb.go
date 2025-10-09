@@ -293,7 +293,7 @@ const file_badgerItem_proto_rawDesc = "" +
 	"\x06prefix\x18\x01 \x01(\tR\x06prefix\x12\x18\n" +
 	"\apagenum\x18\x02 \x01(\x05R\apagenum\"%\n" +
 	"\x0fListFilterReply\x12\x12\n" +
-	"\x04keys\x18\x01 \x03(\tR\x04keys2\xc5\x01\n" +
+	"\x04keys\x18\x01 \x03(\tR\x04keys2\xe3\x01\n" +
 	"\x06Badger\x12\x1a\n" +
 	"\x03Get\x12\x05.Item\x1a\n" +
 	".ItemReply\"\x00\x12\x1a\n" +
@@ -302,6 +302,8 @@ const file_badgerItem_proto_rawDesc = "" +
 	"\x06Delete\x12\x05.Item\x1a\n" +
 	".ItemReply\"\x00\x12\x1d\n" +
 	"\x06Exists\x12\x05.Item\x1a\n" +
+	".ItemReply\"\x00\x12\x1c\n" +
+	"\x05Count\x12\x05.Item\x1a\n" +
 	".ItemReply\"\x00\x12\x1c\n" +
 	"\x05Admin\x12\x05.Item\x1a\n" +
 	".ItemReply\"\x00\x12'\n" +
@@ -331,16 +333,18 @@ var file_badgerItem_proto_depIdxs = []int32{
 	0, // 1: Badger.Set:input_type -> Item
 	0, // 2: Badger.Delete:input_type -> Item
 	0, // 3: Badger.Exists:input_type -> Item
-	0, // 4: Badger.Admin:input_type -> Item
-	2, // 5: Badger.List:input_type -> ListFilter
-	1, // 6: Badger.Get:output_type -> ItemReply
-	1, // 7: Badger.Set:output_type -> ItemReply
-	1, // 8: Badger.Delete:output_type -> ItemReply
-	1, // 9: Badger.Exists:output_type -> ItemReply
-	1, // 10: Badger.Admin:output_type -> ItemReply
-	3, // 11: Badger.List:output_type -> ListFilterReply
-	6, // [6:12] is the sub-list for method output_type
-	0, // [0:6] is the sub-list for method input_type
+	0, // 4: Badger.Count:input_type -> Item
+	0, // 5: Badger.Admin:input_type -> Item
+	2, // 6: Badger.List:input_type -> ListFilter
+	1, // 7: Badger.Get:output_type -> ItemReply
+	1, // 8: Badger.Set:output_type -> ItemReply
+	1, // 9: Badger.Delete:output_type -> ItemReply
+	1, // 10: Badger.Exists:output_type -> ItemReply
+	1, // 11: Badger.Count:output_type -> ItemReply
+	1, // 12: Badger.Admin:output_type -> ItemReply
+	3, // 13: Badger.List:output_type -> ListFilterReply
+	7, // [7:14] is the sub-list for method output_type
+	0, // [0:7] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name

@@ -54,6 +54,11 @@ class BadgerStub(object):
                 request_serializer=badgerItem__pb2.Item.SerializeToString,
                 response_deserializer=badgerItem__pb2.ItemReply.FromString,
                 _registered_method=True)
+        self.Count = channel.unary_unary(
+                '/Badger/Count',
+                request_serializer=badgerItem__pb2.Item.SerializeToString,
+                response_deserializer=badgerItem__pb2.ItemReply.FromString,
+                _registered_method=True)
         self.Admin = channel.unary_unary(
                 '/Badger/Admin',
                 request_serializer=badgerItem__pb2.Item.SerializeToString,
@@ -93,6 +98,12 @@ class BadgerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Count(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Admin(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -125,6 +136,11 @@ def add_BadgerServicer_to_server(servicer, server):
             ),
             'Exists': grpc.unary_unary_rpc_method_handler(
                     servicer.Exists,
+                    request_deserializer=badgerItem__pb2.Item.FromString,
+                    response_serializer=badgerItem__pb2.ItemReply.SerializeToString,
+            ),
+            'Count': grpc.unary_unary_rpc_method_handler(
+                    servicer.Count,
                     request_deserializer=badgerItem__pb2.Item.FromString,
                     response_serializer=badgerItem__pb2.ItemReply.SerializeToString,
             ),
@@ -245,6 +261,33 @@ class Badger(object):
             request,
             target,
             '/Badger/Exists',
+            badgerItem__pb2.Item.SerializeToString,
+            badgerItem__pb2.ItemReply.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Count(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/Badger/Count',
             badgerItem__pb2.Item.SerializeToString,
             badgerItem__pb2.ItemReply.FromString,
             options,

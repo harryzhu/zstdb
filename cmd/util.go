@@ -27,6 +27,14 @@ func GetNowUnixMillo() int64 {
 	return time.Now().UTC().UnixMilli()
 }
 
+func UnixFormat(t int64, format string) string {
+	if format == "" {
+		//"2006-01-02 15:04:05"
+		return time.Unix(t, 0).Format("2006-01-02 15:04:05")
+	}
+	return time.Unix(t, 0).Format(format)
+}
+
 func ZstdBytes(rawin []byte) []byte {
 	enc, _ := zstd.NewWriter(nil)
 	return enc.EncodeAll(rawin, nil)

@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	bgrdb *badger.DB
+	bgrdb         *badger.DB
+	cacheCounters map[string]uint64 = make(map[string]uint64)
 )
 
 func badgerConnect() *badger.DB {
@@ -67,7 +68,7 @@ func badgerSetKV(key, val []byte) []byte {
 	err := bgrdb.Update(func(txn *badger.Txn) error {
 		_, err := txn.Get(key)
 		if err == nil && IsAllowOverWrite == false {
-			DebugInfo("badgerSetKV", "SKIP as exists")
+			//DebugInfo("badgerSetKV", "SKIP as exists")
 			return nil
 		}
 
@@ -92,7 +93,7 @@ func badgerSetV(val []byte) (key []byte) {
 	err := bgrdb.Update(func(txn *badger.Txn) error {
 		_, err := txn.Get(key)
 		if err == nil && IsAllowOverWrite == false {
-			DebugInfo("badgerSetV", "SKIP as exists")
+			//DebugInfo("badgerSetV", "SKIP as exists")
 			return nil
 		}
 		err = txn.Set([]byte(key), ZstdBytes(val))
@@ -193,6 +194,29 @@ func badgerList(prefix string, pageNum int) []string {
 }
 
 func badgerCount(prefix string) uint64 {
+	// saving memory
+	if len(cacheCounters) > 100 {
+		for k, _ := range cacheCounters {
+			delete(cacheCounters, k)
+		}
+	}
+
+	cacheKey := strings.Join([]string{"keycount", prefix}, "_")
+	cacheVersion, ok := cacheCounters["cacheVersion"]
+	if ok {
+		if cacheVersion == bgrdb.MaxVersion() {
+			val, ok := cacheCounters[cacheKey]
+			if ok {
+				DebugInfo("badgerCount", "cache HIT: ", cacheKey)
+				return val
+			}
+		} else {
+			for k, _ := range cacheCounters {
+				delete(cacheCounters, k)
+			}
+		}
+	}
+
 	counter := uint64(0)
 	bgrdb.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -206,6 +230,8 @@ func badgerCount(prefix string) uint64 {
 		}
 		return nil
 	})
+	cacheCounters["cacheVersion"] = bgrdb.MaxVersion()
+	cacheCounters[cacheKey] = counter
 
 	return counter
 }
@@ -345,6 +371,8 @@ func BadgerRunValueLogGC() {
 		if err == nil {
 			time.Sleep(3 * time.Second)
 			goto again
+		} else {
+			PrintError("BadgerRunValueLogGC", err)
 		}
 	}
 }

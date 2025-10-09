@@ -20,7 +20,7 @@ import (
 
 func main() {
 	wg := sync.WaitGroup{}
-	wg.Add(4)
+	wg.Add(5)
 	go func() {
 		cmd.Execute()
 	}()
@@ -31,6 +31,10 @@ func main() {
 
 	go func() {
 		cmd.StartCron()
+	}()
+
+	go func() {
+		cmd.StartFileLogging()
 	}()
 
 	go func() {

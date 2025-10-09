@@ -8,8 +8,8 @@ import badgerItem_pb2
 import badgerItem_pb2_grpc
 
 #rpc_addr = '192.168.0.113:8282'
-rpc_addr = '192.168.0.108:8282'
-#rpc_addr = '127.0.0.1:8282'
+#rpc_addr = '192.168.0.108:8282'
+rpc_addr = '127.0.0.1:8282'
 
 max_msg_size = 1024*1024*1024
 rpc_admin_password = "123"

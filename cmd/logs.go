@@ -9,6 +9,7 @@ import (
 func FatalError(prefix string, err error) {
 	if err != nil {
 		log.Println(Red("ERROR:"), Red(prefix), err)
+		flog("FATAL", prefix, err.Error())
 		log.Fatal(err)
 	}
 }
@@ -31,11 +32,13 @@ func DebugWarn(prefix string, args ...any) {
 		}
 		log.Println(Yellow("WARN:"), Yellow(prefix+":"), Yellow(strings.Join(info, "")))
 	}
+	flog("WARN", prefix, args)
 }
 
 func PrintError(prefix string, err error) {
 	if err != nil {
 		log.Println(Red("ERROR:"), Red(prefix), err)
+		flog("ERROR", prefix, err.Error())
 	}
 }
 

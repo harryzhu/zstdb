@@ -80,4 +80,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&AutoBackupDir, "auto-backup-dir", "", "if set, run autobackup every hour")
 	rootCmd.PersistentFlags().StringVar(&AutoBackupEvery, "auto-backup-every", "@every 1h",
 		"scheduler, format: \"@every 15m\", \"@every 1h\", \"@every 1h30m\"")
+	rootCmd.PersistentFlags().StringVar(&LogDir, "log-dir", "", "write errors(ONLY) into log-dir if not empty")
+	rootCmd.PersistentFlags().Int64Var(&LogMaxSizeMB, "log-max-size-mb", 2, "if log is oversized, remove it first")
 }

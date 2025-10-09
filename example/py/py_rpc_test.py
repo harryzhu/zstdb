@@ -22,9 +22,9 @@ def xxhash_byte(b):
 
 class zstdb():
   def __init__(self,key: str, data: bytes):
-    print(rpc_addr)
+    #print(rpc_addr)
     self.item=badgerItem_pb2.Item(key = key.encode("utf-8"),data = data,ver64 = 0,sum64 = xxhash_byte(data))
-    self.list_filter=badgerItem_pb2.ListFilter(prefix="",pagenum=1)
+    self.list_filter=badgerItem_pb2.ListFilter(prefix=key,pagenum=1)
     self.admin_item=badgerItem_pb2.Item(key = key.encode("utf-8"),data = data,ver64 = 0,sum64 = xxhash_byte(rpc_admin_password))
     self.response = ""
     self.rpc_cmd = ""
@@ -44,6 +44,11 @@ class zstdb():
   def exists(self):
     self.rpc_cmd = "exists"
     self.response = self.stub.Exists(self.item)
+    return self
+
+  def count(self):
+    self.rpc_cmd = "count"
+    self.response = self.stub.Count(self.item)
     return self
 
   def delete(self):
@@ -80,6 +85,16 @@ class zstdb():
     print(f'\n{"#"*10} {self.rpc_cmd} {"#"*10}')
     print(f'key: {self.response.keys}')
 
+  def print_count_reply(self):
+    if self.response is None:
+      print("no response")
+      return
+    print(f'\n{"#"*10} {self.rpc_cmd} {"#"*10}')
+    print(f'errcode: {self.response.errcode}')
+    print(f'status: {self.response.status.decode("utf-8")}')
+    print(f'key: {self.response.key}')
+    print(f'data: {self.response.data.decode("utf-8")}')
+
   def print_admin_reply(self):
     if self.response is None:
       print("no response")
@@ -98,7 +113,7 @@ if __name__ == '__main__':
     fdata = fr.read()
 
   z = zstdb("my-test-key",fdata)
-  z.set().print_item_reply()
+  #z.set().print_item_reply()
   #
   z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
   z.get().print_item_reply()
@@ -107,7 +122,7 @@ if __name__ == '__main__':
   z.exists().print_item_reply()
   #
   z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
-  z.delete().print_item_reply()
+  #z.delete().print_item_reply()
   #
   z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
   z.exists().print_item_reply()
@@ -115,22 +130,25 @@ if __name__ == '__main__':
   z = zstdb("my-test-key",fdata)
   z.set().print_item_reply()
   #
-  z = zstdb("",b'')
+  z = zstdb("1234",b'')
+  z.count().print_count_reply()
+  #
+  z = zstdb("1234",b'')
   z.list().print_list_reply()
   #
   z = zstdb("status",b'')
   z.admin("status").print_admin_reply()
   #
   #backup = {"path": "/Users/harry/backup/20230312", "since": "0"}
-  backup = {"path": "E:/backup/20230312", "since": "0"}
-  byte_backup = json.dumps(backup).encode("utf-8")
-  z = zstdb("backup",byte_backup)
-  z.admin("backup").print_admin_reply()
+  # backup = {"path": "E:/backup/20230312", "since": "0"}
+  # byte_backup = json.dumps(backup).encode("utf-8")
+  # z = zstdb("backup",byte_backup)
+  # z.admin("backup").print_admin_reply()
   #
-  restore = {"path": "E:/backup/20230312_[0_31].zstdb.bak"}
-  byte_restore = json.dumps(restore).encode("utf-8")
-  z = zstdb("restore",byte_restore)
-  z.admin("restore").print_admin_reply()
+  # restore = {"path": "E:/backup/20230312_[0_31].zstdb.bak"}
+  # byte_restore = json.dumps(restore).encode("utf-8")
+  # z = zstdb("restore",byte_restore)
+  # z.admin("restore").print_admin_reply()
 
 
 
