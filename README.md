@@ -37,16 +37,18 @@
 #                当使用环境变量时，一台机器运行一个实例（适合大多数场景）。
 #                但如果需要在一台机器运行多个实例，可以用 --alt-data-dir= 指定每个实例的数据存储位置。
 #
-# --admin-password 默认为123: rpc的 Admin 命令需要提供密码认证才能访问。rpc client 中通过 Sum64 字段传入，需要采取 xxhash 值，不能明码传入
-# --auto-backup-dir 默认为空： 如果设置了自动备份目录 和 自动备份周期， 那么数据库会自动按指定周期自动备份（增量备份）
+# --admin-password 默认为123 ：rpc的 Admin 命令需要提供密码认证才能访问。rpc client 中通过 Sum64 字段传入，需要采取 xxhash 值，不能明码传入
+# --auto-backup-dir 默认为空 ： 如果设置了自动备份目录 和 自动备份周期， 那么数据库会自动按指定周期自动备份（增量备份）
 # --auto-backup-every="@every 1h" 默认为 "@every 1h" 每小时自动备份一次，可以按需修改，注意值必须用引号（因为含有空格），
 #                    ="@every 15m" 表示每15分钟自动备份一次，
 #                    ="@every 1h30m" 表示每1小时30分钟自动备份一次，
 #
 #
+# --log-dir 默认为空 ：为空时，不启用文件log。如果设置为一个文件夹，会把运行时的 Warn、Error 、FatalError 记录到日志文件中。
+# --log-max-size-mb 默认为2 ：允许的最大文件大小，如果超过该值，会自动 清空 文件，避免日志写满硬盘。
 # 运行参数举例：
 
-./zstdb --host=192.168.0.100 --port=8282 --max-upload-size-mb=8 --min-free-disk-space-mb=10240 --admin-password=9527 --auto-backup-dir=/Users/harry/data/backup --auto-backup-every="@every 1h"
+./zstdb --host=192.168.0.100 --port=8282 --max-upload-size-mb=8 --min-free-disk-space-mb=10240 --admin-password=9527 --auto-backup-dir=/Users/harry/data/backup --auto-backup-every="@every 1h" --log-dir=/Users/harry/logs --log-max-size-mb=2
 #
 # 表示：
 # zstdb 启动时，数据库位置在（读取环境变量 zstdb_data 的值），
@@ -55,6 +57,8 @@
 # 自动定期检查磁盘剩余可用空间， 如果低于10GB，则停止写入，不影响已有数据的读取服务，但不再写入新的数据了；
 # 对于rpc 服务中的 Admin 方法（stop、status、gc、backup、restore）必须要提供密码 9527 才能访问，
 # 会每1个小时自动增量备份一次数据到 /Users/harry/data/backup 目录下
+# 运行时的日志会记录在/Users/harry/logs目录下，仅记录 Warn、Error 、FatalError 信息，不会记录 INFO 级别的信息
+# 每1分钟检测一下日志文件的大小，如果超过 2mb 就清空它。如果你想记录更多的日志，可以将该值增大，比如 256、1024 等
 #
 #
 ./zstdb --alt-data-dir=/Users/harry/data/8282
@@ -112,8 +116,13 @@ message ItemReply {
   * `Set`, 写入
   * `Get`, 读取
   * `Delete`, 删除
-  * `Exists`, 检查数据是否存在，返回 0 表示不存在，返回其他数字表示：存在数据的当前版本号
-  * `List`, 按指定前缀获取 Key 清单，分页，每次获取1000个Key。若前缀指定为空字符串，表示获取所有 ey
+  * `Exists`, 检查数据是否存在，传入 `key` 和 `mode=0或1`
+              返回 0 表示不存在，返回其他数字表示：存在数据且该数据的版本号，
+              mode=0 时，会仅检查是否存在，更快，
+              mode=1 时，会返回数据的长度，数据的 sum64 哈希值（xxhash算法），可以用来检查完整性，更消耗CPU
+  * `List`, 按指定前缀获取 Key 清单，分页，每次获取1000个Key。若前缀指定为空字符串，表示获取所有 key
+  * `Count`, 按指定前缀获取 Key 数量，i.e.: 传入`key="harry/"`, 表示统计前缀为 `harry/` 的key的数量
+  * `Ping`,  检查 rpc 服务的健康状态，正常返回 `Errcode=0, Data="ok"`, 故障返回 `Errcode=400, Data="oos", Status="db is closed"`
   * `Status`, 
     * `stats`, 获取简单统计数据 `max_version`, `key_count`, `lsm_size`, `vlog_size`
     * `backup`, 备份数据库，需要在 Data 字段提供 JSON 格式的 `path` 和 `since`, 值均为字符串。通过 since 的值可以增值备份

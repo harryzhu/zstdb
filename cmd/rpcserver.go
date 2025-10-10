@@ -140,18 +140,64 @@ func (s *server) Exists(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		Ver64:   0,
 		Sum64:   0,
 	}
+
+	rData := make(map[string]int)
+	rData["exists"] = 0
+	rData["length"] = 0
+	rData["mode"] = 0
+
 	if in.Key != nil {
-		verNum := badgerExists(in.Key)
+		inData := in.Data
+		mode := 0
+		j := make(map[string]int)
+		err := JSON2MapInt(inData, j)
+		if err == nil {
+			inMode, ok := j["mode"]
+			if ok {
+				mode = inMode
+			}
+		}
+		rData["mode"] = mode
+
+		verNum, dataLength, dataSum64 := badgerExists(in.Key, mode)
 
 		if verNum == 0 {
 			resp.Errcode = 404
 			resp.Status = []byte("Not Found")
 			resp.Ver64 = 0
+			rData["exists"] = 0
+			rData["length"] = 0
 		} else {
 			resp.Errcode = 0
 			resp.Ver64 = verNum
+			resp.Sum64 = dataSum64
+			rData["exists"] = 1
+			rData["length"] = dataLength
 		}
 
+	}
+	DebugInfo("Exists", rData)
+	resp.Data = MapInt2JSON(rData)
+
+	return resp, nil
+}
+
+func (s *server) Ping(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
+	resp := &pb.ItemReply{
+		Errcode: 0,
+		Status:  nil,
+		Key:     nil,
+		Data:    nil,
+		Ver64:   0,
+		Sum64:   0,
+	}
+
+	if bgrdb.IsClosed() == true {
+		resp.Errcode = 500
+		resp.Status = []byte("db is closed")
+		resp.Data = []byte("oos")
+	} else {
+		resp.Data = []byte("ok")
 	}
 
 	return resp, nil
@@ -190,57 +236,71 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 		resp.Key = []byte(inKey)
 
 		if inKey == "stop" {
+			rDataStop := make(map[string]int)
 			go func() {
 				time.Sleep(2 * time.Second)
 				StopGrpcServer()
 				time.Sleep(2 * time.Second)
 				os.Exit(0)
 			}()
+			rDataStop["done"] = 1
+			resp.Data = MapInt2JSON(rDataStop)
 
 			return resp, nil
 		}
 
 		if inKey == "gc" {
+			rDataGC := make(map[string]int)
 			err := bgrdb.RunValueLogGC(0.5)
 			if err != nil {
 				resp.Status = []byte(err.Error())
+				rDataGC["done"] = 0
+			} else {
+				rDataGC["done"] = 1
 			}
 
+			resp.Data = MapInt2JSON(rDataGC)
 			return resp, nil
 		}
 
 		if inKey == "sync" {
+			rDataSync := make(map[string]int)
 			err := badgerSync()
 			if err != nil {
 				resp.Status = []byte(err.Error())
+				rDataSync["done"] = 0
+			} else {
+				rDataSync["done"] = 1
 			}
 
+			rDataSync["done"] = 1
+			resp.Data = MapInt2JSON(rDataSync)
 			return resp, nil
 		}
 
 		if inKey == "status" {
 			var keyCount uint64 = 0
-			stats := make(map[string]string)
+			rDataStatus := make(map[string]string)
 
 			t1 := GetNowUnixMillo()
 			keyCount = badgerCount("")
 			tElapse := GetNowUnixMillo() - t1
 
 			lsm_size, vlog_size := bgrdb.Size()
-			stats["max_version"] = Uint64ToString(bgrdb.MaxVersion())
-			stats["key_count"] = Uint64ToString(keyCount)
-			stats["lsm_size"] = Int64ToString(lsm_size)
-			stats["vlog_size"] = Int64ToString(vlog_size)
-			stats["elapse_ms"] = Int64ToString(tElapse)
+			rDataStatus["max_version"] = Uint64ToString(bgrdb.MaxVersion())
+			rDataStatus["key_count"] = Uint64ToString(keyCount)
+			rDataStatus["lsm_size"] = Int64ToString(lsm_size)
+			rDataStatus["vlog_size"] = Int64ToString(vlog_size)
+			rDataStatus["elapse_ms"] = Int64ToString(tElapse)
 
-			resp.Data = Map2JSON(stats)
+			resp.Data = Map2JSON(rDataStatus)
 		}
 
 		if inKey == "backup" || inKey == "restore" {
 			resp.Key = []byte(inKey)
 			inData := in.Data
-			m := make(map[string]string)
-			err := JSON2Map(inData, m)
+			rDataBackupRestore := make(map[string]string)
+			err := JSON2Map(inData, rDataBackupRestore)
 			if err != nil {
 				PrintError(inKey, err)
 				resp.Errcode = 500
@@ -250,7 +310,7 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 
 			fpath := ""
 			var fsince uint64 = 0
-			for k, v := range m {
+			for k, v := range rDataBackupRestore {
 				if k == "path" {
 					fpath = v
 				}
@@ -279,12 +339,12 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 					doneFile := strings.Join([]string{fpath, "backup.done"}, ".")
 					doneContent := ReadFile(doneFile)
 					if doneContent != nil {
-						m["target"] = string(doneContent)
+						rDataBackupRestore["target"] = string(doneContent)
 					}
 				} else {
 					resp.Errcode = 500
 					resp.Status = []byte(err.Error())
-					m["target"] = ""
+					rDataBackupRestore["target"] = ""
 				}
 			}
 
@@ -293,15 +353,14 @@ func (s *server) Admin(_ context.Context, in *pb.Item) (*pb.ItemReply, error) {
 				if err != nil {
 					resp.Errcode = 500
 					resp.Status = []byte(err.Error())
-					m["target"] = "failed"
+					rDataBackupRestore["target"] = "failed"
 				} else {
-					m["target"] = "ok"
+					rDataBackupRestore["target"] = "ok"
 				}
 			}
 
 			DebugInfo(inKey, "complete")
-
-			resp.Data = Map2JSON(m)
+			resp.Data = Map2JSON(rDataBackupRestore)
 		}
 
 	}

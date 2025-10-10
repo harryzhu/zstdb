@@ -64,6 +64,11 @@ class BadgerStub(object):
                 request_serializer=badgerItem__pb2.Item.SerializeToString,
                 response_deserializer=badgerItem__pb2.ItemReply.FromString,
                 _registered_method=True)
+        self.Ping = channel.unary_unary(
+                '/Badger/Ping',
+                request_serializer=badgerItem__pb2.Item.SerializeToString,
+                response_deserializer=badgerItem__pb2.ItemReply.FromString,
+                _registered_method=True)
         self.List = channel.unary_unary(
                 '/Badger/List',
                 request_serializer=badgerItem__pb2.ListFilter.SerializeToString,
@@ -110,6 +115,12 @@ class BadgerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Ping(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def List(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -146,6 +157,11 @@ def add_BadgerServicer_to_server(servicer, server):
             ),
             'Admin': grpc.unary_unary_rpc_method_handler(
                     servicer.Admin,
+                    request_deserializer=badgerItem__pb2.Item.FromString,
+                    response_serializer=badgerItem__pb2.ItemReply.SerializeToString,
+            ),
+            'Ping': grpc.unary_unary_rpc_method_handler(
+                    servicer.Ping,
                     request_deserializer=badgerItem__pb2.Item.FromString,
                     response_serializer=badgerItem__pb2.ItemReply.SerializeToString,
             ),
@@ -315,6 +331,33 @@ class Badger(object):
             request,
             target,
             '/Badger/Admin',
+            badgerItem__pb2.Item.SerializeToString,
+            badgerItem__pb2.ItemReply.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Ping(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/Badger/Ping',
             badgerItem__pb2.Item.SerializeToString,
             badgerItem__pb2.ItemReply.FromString,
             options,

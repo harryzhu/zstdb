@@ -9,6 +9,7 @@ service Badger {
   rpc Exists (Item) returns (ItemReply) {}
   rpc Count (Item) returns (ItemReply) {}
   rpc Admin (Item) returns (ItemReply) {}
+  rpc Ping (Item) returns (ItemReply) {}
   rpc List (ListFilter) returns (ListFilterReply) {}
 }
 

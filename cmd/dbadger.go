@@ -236,25 +236,37 @@ func badgerCount(prefix string) uint64 {
 	return counter
 }
 
-func badgerExists(key []byte) uint64 {
+func badgerExists(key []byte, model int) (verNum uint64, length int, sum64 uint64) {
 	if key == nil {
 		DebugWarn("badgerExists", "key cannot be empty")
-		return 0
+		return 0, 0, 0
 	}
-	var verNum uint64
+
 	err := bgrdb.View(func(txn *badger.Txn) error {
 		it, err := txn.Get(key)
 		if err != nil {
 			return err
 		}
 		verNum = it.Version()
+		if model == 1 {
+			itVal, err := it.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			valUnzstd, err := UnZstdBytes(itVal)
+			if err != nil {
+				return err
+			}
+			length = len(valUnzstd)
+			sum64 = GetXxhash(valUnzstd)
+		}
 		return nil
 	})
 	if err != nil {
-		return 0
+		return 0, 0, 0
 	}
 
-	return verNum
+	return verNum, length, sum64
 }
 
 func badgerSync() error {

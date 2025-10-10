@@ -25,6 +25,7 @@ const (
 	Badger_Exists_FullMethodName = "/Badger/Exists"
 	Badger_Count_FullMethodName  = "/Badger/Count"
 	Badger_Admin_FullMethodName  = "/Badger/Admin"
+	Badger_Ping_FullMethodName   = "/Badger/Ping"
 	Badger_List_FullMethodName   = "/Badger/List"
 )
 
@@ -38,6 +39,7 @@ type BadgerClient interface {
 	Exists(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	Count(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	Admin(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
+	Ping(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error)
 	List(ctx context.Context, in *ListFilter, opts ...grpc.CallOption) (*ListFilterReply, error)
 }
 
@@ -109,6 +111,16 @@ func (c *badgerClient) Admin(ctx context.Context, in *Item, opts ...grpc.CallOpt
 	return out, nil
 }
 
+func (c *badgerClient) Ping(ctx context.Context, in *Item, opts ...grpc.CallOption) (*ItemReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ItemReply)
+	err := c.cc.Invoke(ctx, Badger_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *badgerClient) List(ctx context.Context, in *ListFilter, opts ...grpc.CallOption) (*ListFilterReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListFilterReply)
@@ -129,6 +141,7 @@ type BadgerServer interface {
 	Exists(context.Context, *Item) (*ItemReply, error)
 	Count(context.Context, *Item) (*ItemReply, error)
 	Admin(context.Context, *Item) (*ItemReply, error)
+	Ping(context.Context, *Item) (*ItemReply, error)
 	List(context.Context, *ListFilter) (*ListFilterReply, error)
 	mustEmbedUnimplementedBadgerServer()
 }
@@ -157,6 +170,9 @@ func (UnimplementedBadgerServer) Count(context.Context, *Item) (*ItemReply, erro
 }
 func (UnimplementedBadgerServer) Admin(context.Context, *Item) (*ItemReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Admin not implemented")
+}
+func (UnimplementedBadgerServer) Ping(context.Context, *Item) (*ItemReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
 func (UnimplementedBadgerServer) List(context.Context, *ListFilter) (*ListFilterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -290,6 +306,24 @@ func _Badger_Admin_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Badger_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Item)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BadgerServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Badger_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BadgerServer).Ping(ctx, req.(*Item))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Badger_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListFilter)
 	if err := dec(in); err != nil {
@@ -338,6 +372,10 @@ var Badger_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Admin",
 			Handler:    _Badger_Admin_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _Badger_Ping_Handler,
 		},
 		{
 			MethodName: "List",

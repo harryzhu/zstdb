@@ -61,12 +61,17 @@ class zstdb():
     self.response = self.stub.List(self.list_filter)
     return self
 
+  def ping(self):
+    self.rpc_cmd = "ping"
+    self.response = self.stub.Ping(self.item)
+    return self
+
   def admin(self,cmd):
     self.rpc_cmd = f'admin: {cmd}'
     self.response = self.stub.Admin(self.admin_item)
     return self
 
-  def print_item_reply(self):
+  def print_item_reply(self, is_decode_data = False):
     if self.response is None:
       print("no response")
       return
@@ -74,7 +79,10 @@ class zstdb():
     print(f'errcode: {self.response.errcode}')
     print(f'status: {self.response.status.decode("utf-8")}')
     print(f'key: {self.response.key.decode("utf-8")}')
-    print(f'data length: {len(self.response.data)}')
+    if is_decode_data:
+      print(f'data: {self.response.data.decode("utf-8")}')
+    else:
+      print(f'data length: {len(self.response.data)}')
     print(f'ver64: {self.response.ver64}')
     print(f'sum64: {self.response.sum64}')
 
@@ -109,33 +117,42 @@ class zstdb():
 
  
 if __name__ == '__main__':
+  print("-"*50)
   with open("th.webp","rb")as fr:
     fdata = fr.read()
 
-  z = zstdb("my-test-key",fdata)
-  #z.set().print_item_reply()
-  #
-  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
-  z.get().print_item_reply()
-  #
-  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
-  z.exists().print_item_reply()
-  #
-  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
-  #z.delete().print_item_reply()
-  #
-  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
-  z.exists().print_item_reply()
+  z = zstdb("",b'')
+  z.ping().print_item_reply(True)
   #
   z = zstdb("my-test-key",fdata)
   z.set().print_item_reply()
   #
+  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
+  z.get().print_item_reply()
+  #
+  exists = {"mode": 0}
+  byte_exists = json.dumps(exists).encode("utf-8")
+  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",byte_exists)
+  z.exists().print_item_reply(True)
+  #
+  #z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",b'')
+  #z.delete().print_item_reply()
+  #
+  exists = {"mode": 1}
+  byte_exists = json.dumps(exists).encode("utf-8")
+  print(byte_exists)
+  z = zstdb("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17",byte_exists)
+  z.exists().print_item_reply(True)
+  #
+  # z = zstdb("my-test-key",fdata)
+  # z.set().print_item_reply()
+  # #
   z = zstdb("1234",b'')
   z.count().print_count_reply()
-  #
+  # #
   z = zstdb("1234",b'')
   z.list().print_list_reply()
-  #
+  # #
   z = zstdb("status",b'')
   z.admin("status").print_admin_reply()
   #

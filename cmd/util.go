@@ -225,6 +225,27 @@ func JSON2Map(b []byte, m map[string]string) error {
 	return nil
 }
 
+func JSON2MapInt(b []byte, m map[string]int) error {
+	err := json.Unmarshal(b, &m)
+	if err != nil {
+		PrintError("JSON2MapInt", err)
+		return err
+	}
+	return nil
+}
+
+func MapInt2JSON(m map[string]int) []byte {
+	bf := bytes.NewBuffer([]byte{})
+	enc := json.NewEncoder(bf)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(m)
+	if err != nil {
+		PrintError("MapInt2JSON", err)
+		return nil
+	}
+	return []byte(bf.String())
+}
+
 func WriteFile(fpath string, fcontent []byte) error {
 	fp, err := os.Create(fpath)
 	if err != nil {
