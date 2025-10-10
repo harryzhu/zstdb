@@ -171,8 +171,11 @@ import badgerItem_pb2_grpc
 max_msg_size = 32*1024*1024
 rpc_admin_password = "123"
 #
-rpc_addr = '192.168.0.113:8282'
+rpc_addr = '127.0.0.1:8282'
 rpc_opt = (('grpc.max_send_message_length', max_msg_size),('grpc.max_receive_message_length', max_msg_size))
+#
+channel = grpc.insecure_channel(target=rpc_addr, options=rpc_opt)
+stub = badgerItem_pb2_grpc.BadgerStub(channel)
 
 def xxhashbyte(b):
   if b is None or len(b) == 0:
@@ -180,40 +183,66 @@ def xxhashbyte(b):
   return xxhash.xxh64(b).intdigest()
 
 def fset(k,v):
-  with grpc.insecure_channel(target=rpc_addr, options=rpc_opt) as channel:
-    stub = badgerItem_pb2_grpc.BadgerStub(channel)
-    response = stub.Set(badgerItem_pb2.Item(key=k.encode("utf-8"), data=v, sum64=xxhashbyte(v)))
-    return response
+  item = badgerItem_pb2.Item(key=k.encode("utf-8"), data=v, sum64=xxhashbyte(v))
+  response = stub.Set(item)
+  return response
 
 def fget(k):
-  with grpc.insecure_channel(target=rpc_addr, options=rpc_opt) as channel:
-    stub = badgerItem_pb2_grpc.BadgerStub(channel)
-    response = stub.Get(badgerItem_pb2.Item(key=k.encode("utf-8")))
-    return response
+  item = badgerItem_pb2.Item(key=k.encode("utf-8"))
+  response = stub.Get(item)
+  return response
 
+def fadmin(k,v):
+  item_admin = badgerItem_pb2.Item(key=k.encode("utf-8"), 
+    data=v.encode("utf-8"), 
+    sum64=xxhashbyte(rpc_admin_password.encode("utf-8")))
+  response = stub.Admin(item_admin)
+  return response
+
+def print_response(resp, data_decode = False):
+  print("-"*30)
+  print(f'resp: errcode: {resp.errcode}')
+  print(f'resp: status: {resp.status.decode("utf-8")}')
+  print(f'resp: key: {resp.key.decode("utf-8")}')
+  if data_decode == True:
+    print(f'resp: data: {resp.data.decode("utf-8")}')
+  else:
+    print(f'resp: data length: {len(resp.data)}')
+  print(f'resp: ver64: {resp.ver64}')
+  print(f'resp: sum64: {resp.sum64}')
 
 if __name__ == '__main__':
   with open("th.webp","rb")as fr:
     fdata = fr.read()
 
   resp = fset("my-test-key", fdata)
-  # 3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17
+  print_response(resp)
+  # resp: errcode: 0  # 错误码 0 表示没有错误
+  # resp: status:
+  # resp: key: 3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17 #写入正常会返回生成的 key 值
+  # resp: data length: 0 #写入数据，返回值中 data 、ver64 、 sum64 均为空
+  # resp: ver64: 0
+  # resp: sum64: 0
 
   resp = fget("3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17")
+  print_response(resp)
+  # resp: errcode: 0 # 错误码 0 表示没有错误
+  # resp: status:
+  # resp: key: 3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17 # key为查询的key
+  # resp: data length: 244552 #读取数据，返回值中 data 为文件内容
+  # resp: ver64: 2 #读取数据，返回值中 ver64 为数据在库中的版本号
+  # resp: sum64: 16664423322944650346 #读取数据，返回值中 sum64 为 data 数据段 xxhash 后的值
 
-  print(f'resp: errcode: {resp.errcode}')
-  print(f'resp: status: {resp.status.decode("utf-8")}')
-  print(f'resp: key: {resp.key.decode("utf-8")}')
-  print(f'resp: data length: {len(resp.data)}')
-  print(f'resp: ver64: {resp.ver64}')
-  print(f'resp: sum64: {resp.sum64}')
-  #
+  resp = fadmin("status",'')
+  print_response(resp,True)
+  # admin 段的操作，需要通过sum64提供密码： sum64=xxhashbyte(rpc_admin_password.encode("utf-8")
   # resp: errcode: 0
-  # resp: status: ok
-  # resp: key: 3e18cf82e2b8416538a294f54a011359ba4b515d34e5a2195ac3231b6a9f3e17
-  # resp: data length: 244552
-  # resp: ver64: 138701
-  # resp: sum64: 16664423322944650346
+  # resp: status:
+  # resp: key: status
+  # resp: data: {"elapse_ms":"0","key_count":"368","lsm_size":"33118","max_version":"368","vlog_size":"4959169096"}
+  # resp: ver64: 0
+  # resp: sum64: 0
+
   
   # ./zstdb 启动时，
   # 如果 --allow-user-key 设置为 true，那么 Key 就为 "my-test-key"
