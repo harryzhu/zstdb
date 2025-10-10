@@ -133,26 +133,28 @@ message ItemReply {
 
 ```python
 
-def fstatus(k,v):
+def fadmin(k,v):
   with grpc.insecure_channel(target=rpc_addr, options=rpc_opt) as channel:
     stub = badgerItem_pb2_grpc.BadgerStub(channel)
-    response = stub.Status(badgerItem_pb2.Item(key=k.encode("utf-8"), data=v.encode("utf-8")))
+    response = stub.Admin(badgerItem_pb2.Item(key=k.encode("utf-8"), 
+      data=v.encode("utf-8"), 
+      sum64=xxhashbyte(rpc_admin_password.encode("utf-8"))))
     return response
 
 # 备份数据库
 m = {"path": "/Users/harry/zstdb/backup/20230101", "since": "0"}
-# 注意： since 的值必须是 "0" (带有引号，即字符串)，不能是 0 （不带引号，即数字），
+# 注意： since 的值必须是字符串，"0"、"52"、"1500"或任意数据库里面存在的版本号 (带有引号，即字符串)，不能是 0、52、1500 （不带引号，即数字），
 # since 的值是数据库内数据的版本号，"0" 表示全量备份，"232434" 表示仅备份版本为 "232434" 之后新增的数据，即增量备份
 # path 为 zstdb 机器的本地路径, 文件名会添加后缀：_[since的值-备份时的最大版本号].zstdb.bak
 mstr = json.dumps(m)
-resp = fstatus("backup",mstr)
-print(f'resp: fstatus: {resp.data.decode("utf-8")}')
+resp = fadmin("backup",mstr)
+print(f'resp: fadmin: {resp.data.decode("utf-8")}')
 
 # 恢复数据库
 m = {"path": "/Users/harry/zstdb/backup/20230101_[0-132854].zstdb.bak"}
 mstr = json.dumps(m)
-resp = fstatus("restore",mstr)
-print(f'resp: fstatus: {resp.data.decode("utf-8")}')
+resp = fadmin("restore",mstr)
+print(f'resp: fadmin: {resp.data.decode("utf-8")}')
 ```
 
 * 保存数据：
@@ -167,7 +169,8 @@ import badgerItem_pb2
 import badgerItem_pb2_grpc
 
 max_msg_size = 32*1024*1024
-
+rpc_admin_password = "123"
+#
 rpc_addr = '192.168.0.113:8282'
 rpc_opt = (('grpc.max_send_message_length', max_msg_size),('grpc.max_receive_message_length', max_msg_size))
 
