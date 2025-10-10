@@ -383,8 +383,6 @@ func BadgerRunValueLogGC() {
 		if err == nil {
 			time.Sleep(3 * time.Second)
 			goto again
-		} else {
-			PrintError("BadgerRunValueLogGC", err)
 		}
 	}
 }
