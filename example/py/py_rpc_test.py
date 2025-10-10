@@ -8,8 +8,8 @@ import badgerItem_pb2
 import badgerItem_pb2_grpc
 
 #rpc_addr = '192.168.0.113:8282'
-rpc_addr = '192.168.0.108:8282'
-#rpc_addr = '127.0.0.1:8282'
+#rpc_addr = '192.168.0.108:8282'
+rpc_addr = '127.0.0.1:8282'
 
 rpc_admin_password = "123"
 max_msg_size = 1024*1024*1024
@@ -92,26 +92,6 @@ class zstdb():
       return
     print(f'\n{"#"*10} {self.rpc_cmd} {"#"*10}')
     print(f'key: {self.response.keys}')
-
-  def print_count_reply(self):
-    if self.response is None:
-      print("no response")
-      return
-    print(f'\n{"#"*10} {self.rpc_cmd} {"#"*10}')
-    print(f'errcode: {self.response.errcode}')
-    print(f'status: {self.response.status.decode("utf-8")}')
-    print(f'key: {self.response.key}')
-    print(f'data: {self.response.data.decode("utf-8")}')
-
-  def print_admin_reply(self):
-    if self.response is None:
-      print("no response")
-      return
-    print(f'\n{"#"*10} {self.rpc_cmd} {"#"*10}')
-    print(f'errcode: {self.response.errcode}')
-    print(f'status: {self.response.status.decode("utf-8")}')
-    print(f'key: {self.response.key}')
-    print(f'data: {self.response.data.decode("utf-8")}')
     
 
 
@@ -147,25 +127,25 @@ if __name__ == '__main__':
   # z = zstdb("my-test-key",fdata)
   # z.set().print_item_reply()
   # #
-  z = zstdb("1234",b'')
-  z.count().print_count_reply()
+  z = zstdb("1",b'')
+  z.count().print_item_reply(True)
   # #
-  z = zstdb("1234",b'')
+  z = zstdb("3",b'')
   z.list().print_list_reply()
   # #
   z = zstdb("status",b'')
-  z.admin("status").print_admin_reply()
+  z.admin("status").print_item_reply(True)
   #
   #backup = {"path": "/Users/harry/backup/20230312", "since": "0"}
   # backup = {"path": "E:/backup/20230312", "since": "0"}
   # byte_backup = json.dumps(backup).encode("utf-8")
   # z = zstdb("backup",byte_backup)
-  # z.admin("backup").print_admin_reply()
+  # z.admin("backup").print_item_reply(True)
   #
   # restore = {"path": "E:/backup/20230312_[0_31].zstdb.bak"}
   # byte_restore = json.dumps(restore).encode("utf-8")
   # z = zstdb("restore",byte_restore)
-  # z.admin("restore").print_admin_reply()
+  # z.admin("restore").print_item_reply(True)
 
 
 

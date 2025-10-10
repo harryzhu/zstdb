@@ -165,7 +165,7 @@ func badgerList(prefix string, pageNum int) []string {
 	pageSize := 1000
 	bgrdb.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
+		opts.PrefetchSize = 0
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
@@ -182,7 +182,7 @@ func badgerList(prefix string, pageNum int) []string {
 				break
 			}
 			item := it.Item()
-			k := string(item.Key())
+			k := strings.Join([]string{string(item.Key()), Uint64ToString(item.Version())}, ":")
 			if strings.HasPrefix(k, prefix) {
 				pageKeys = append(pageKeys, k)
 			}
@@ -195,7 +195,7 @@ func badgerList(prefix string, pageNum int) []string {
 
 func badgerCount(prefix string) uint64 {
 	// saving memory
-	if len(cacheCounters) > 100 {
+	if len(cacheCounters) > 32 {
 		for k, _ := range cacheCounters {
 			delete(cacheCounters, k)
 		}
@@ -220,7 +220,7 @@ func badgerCount(prefix string) uint64 {
 	counter := uint64(0)
 	bgrdb.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 1000
+		opts.PrefetchSize = 0
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
