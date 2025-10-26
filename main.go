@@ -85,6 +85,8 @@ func WatchDiskFreeSpace() error {
 	if freeSpace > 0 && freeSpace < minFreeSpace {
 		cmd.IsDisableSet = true
 		DebugInfo("Current IsDisableSet", cmd.IsDisableSet)
+	} else {
+		cmd.IsDisableSet = false
 	}
 
 	if cmd.IsDisableSet == true {
