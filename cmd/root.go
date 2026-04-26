@@ -5,6 +5,10 @@ package cmd
 
 import (
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -46,7 +50,39 @@ var rootCmd = &cobra.Command{
 		SaveCurrentPID()
 		SaveCurrentAddr()
 		BeforeGrpcStart()
-		StartGrpcServer()
+		//
+		wg := sync.WaitGroup{}
+		wg.Add(6)
+
+		go func() {
+			BadgerRunValueLogGC()
+		}()
+
+		go func() {
+			StartCron()
+		}()
+
+		go func() {
+			StartFileLogging()
+		}()
+
+		go func() {
+			onExit()
+		}()
+
+		go func() {
+			StartGrpcServer()
+		}()
+
+		go func() {
+			ticker := time.NewTicker(15 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				WatchDiskFreeSpace()
+			}
+		}()
+
+		wg.Wait()
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 
@@ -82,4 +118,16 @@ func init() {
 		"scheduler, format: \"@every 15m\", \"@every 1h\", \"@every 1h30m\"")
 	rootCmd.PersistentFlags().StringVar(&LogDir, "log-dir", "", "write errors(ONLY) into log-dir if not empty")
 	rootCmd.PersistentFlags().Int64Var(&LogMaxSizeMB, "log-max-size-mb", 2, "if log is oversized, remove it first")
+}
+
+func onExit() {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		StopGrpcServer()
+		PrintlnInfo("zstdb", "Bye ...")
+		time.Sleep(time.Second * 2)
+		os.Exit(0)
+	}()
 }

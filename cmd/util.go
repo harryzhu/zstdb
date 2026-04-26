@@ -333,3 +333,38 @@ func RemoveFile(fpath string) error {
 	}
 	return nil
 }
+
+func WatchDiskFreeSpace() error {
+	var cmdMinFreeDiskSpaceMB uint64 = MinFreeDiskSpaceMB
+	if cmdMinFreeDiskSpaceMB < 512 {
+		cmdMinFreeDiskSpaceMB = 512
+	}
+
+	var minFreeSpace uint64 = cmdMinFreeDiskSpaceMB << 20
+
+	freeSpace := uint64(0)
+	absDataDir, err := filepath.Abs(DataDir)
+	if err != nil {
+		DebugInfo("WatchDiskFreeSpace: ERROR", err)
+		return err
+	}
+	absDataDir = filepath.ToSlash(absDataDir)
+	if absDataDir != "" {
+		freeSpace = DiskFree(absDataDir)
+		//DebugInfo("Current freespace(MB)", (freeSpace >> 20), ", (≈", (freeSpace >> 30), "GB)")
+		//DebugInfo("Current threshold(MB)", (minFreeSpace >> 20))
+	}
+
+	if freeSpace > 0 && freeSpace < minFreeSpace {
+		IsDisableSet = true
+		DebugInfo("Current IsDisableSet", IsDisableSet)
+	} else {
+		IsDisableSet = false
+	}
+
+	if IsDisableSet == true {
+		DebugInfo("zstdb [SET] action had been DISABLED, new data cannot be saved.")
+		DebugInfo("Because of the Free Disk Space < ", minFreeSpace)
+	}
+	return nil
+}
